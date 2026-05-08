@@ -1,0 +1,14 @@
+services:
+  webinmo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webinmo-admin
+    ports:
+      - "${WEBINMO_PORT:-8090}:80"
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    environment:
+      PHP_SESSION_SAVE_PATH: /tmp/webinmo-sessions
+    restart: unless-stopped
