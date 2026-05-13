@@ -852,7 +852,7 @@ function renderPublicCatalog() {
           <p>${escapeHtml(project?.state?.headline || "Promocion inmobiliaria publicada")}</p>
           <div class="public-project-card__footer">
             <strong>${escapeHtml(companyName || "Tupromocion.es")}</strong>
-            <a class="primary-btn primary-btn--compact" href="${escapeAttr(getPublicCatalogUrl(project))}">Ver promocion</a>
+            <a class="site-btn site-btn--primary" style="padding:10px 20px;font-size:0.85rem" href="${escapeAttr(getPublicCatalogUrl(project))}">Ver promoción</a>
           </div>
         </div>
       </article>

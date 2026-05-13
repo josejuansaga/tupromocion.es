@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Generador de promociones urbanisticas</title>
+    <title>TuPromoción — Webs profesionales para promociones inmobiliarias</title>
+    <meta name="description" content="Convierte renders, planos y tipologías en una web profesional lista para captar clientes. Una solución de Tu Casa en 3D." />
+    <meta property="og:title" content="TuPromoción — Webs para promociones inmobiliarias" />
+    <meta property="og:description" content="Webs rápidas y profesionales para promotoras, arquitectos y comercializadoras. by Tu Casa en 3D." />
+    <meta property="og:image" content="https://tupromocion.es/img/tupromocion-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
@@ -13,22 +17,112 @@
   </head>
   <body>
     <section id="publicWorkspace" class="public-shell" hidden>
-      <header class="public-hero">
-        <p class="eyebrow">tupromocion.es</p>
-        <h1>Promociones publicadas</h1>
-        <p>Descubre todos los proyectos residenciales disponibles.</p>
+
+      <!-- NAV -->
+      <nav class="site-nav">
+        <a class="site-nav__logo" href="/">
+          <img src="./img/tupromocion-logo.png" alt="TuPromoción by Tu Casa en 3D" height="40" />
+        </a>
+        <a class="site-nav__access" href="/admin">Acceso al panel</a>
+      </nav>
+
+      <!-- HERO -->
+      <header class="site-hero">
+        <div class="site-hero__inner">
+          <p class="site-eyebrow">Webs para promociones inmobiliarias</p>
+          <h1 class="site-hero__title">Tu promoción,<br>lista para vender.</h1>
+          <p class="site-hero__lead">Convertimos renders, planos y tipologías en una web profesional y elegante, lista para captar clientes desde el primer día. Una solución de <strong>Tu Casa en 3D</strong>.</p>
+          <div class="site-hero__ctas">
+            <a class="site-btn site-btn--primary" href="#promociones">Ver promociones</a>
+            <a class="site-btn site-btn--ghost" href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromocion" target="_blank" rel="noopener">Consultar por WhatsApp</a>
+          </div>
+        </div>
+        <div class="site-hero__visual">
+          <img src="https://tucasaen3d.es/wp-content/uploads/2021/08/Drone-6.jpg" alt="Render 3D exterior promoción" loading="eager" />
+        </div>
       </header>
 
-      <div class="public-filterbar">
-        <p id="publicResultsCount" class="public-results-count">0 proyectos</p>
-      </div>
+      <!-- CÓMO FUNCIONA -->
+      <section class="how-section">
+        <div class="how-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Cómo funciona</p>
+          <h2 class="how-section__title">De tu material comercial a la web en días</h2>
+          <div class="how-steps">
+            <article class="how-step">
+              <span class="how-step__num">01</span>
+              <h3>Nos envías el material</h3>
+              <p>Renders, planos, memoria comercial, tipologías y cualquier contenido que tengas del proyecto.</p>
+            </article>
+            <article class="how-step">
+              <span class="how-step__num">02</span>
+              <h3>Publicamos la promoción</h3>
+              <p>Creamos la ficha completa: galería, tipologías, mapa, PDF descargable y formulario de contacto.</p>
+            </article>
+            <article class="how-step">
+              <span class="how-step__num">03</span>
+              <h3>Empiezas a captar clientes</h3>
+              <p>Comparte el enlace limpio de tu promoción y recibe consultas con imagen totalmente profesional.</p>
+            </article>
+          </div>
+        </div>
+      </section>
 
-      <section id="publicProjectsGrid" class="public-projects-grid"></section>
-      <button id="publicBackToTopBtn" class="floating-top-btn" type="button" hidden>Subir</button>
+      <!-- CATÁLOGO DE PROMOCIONES -->
+      <section id="promociones" class="catalog-section">
+        <div class="catalog-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Proyectos publicados</p>
+          <h2 class="catalog-section__title">Promociones activas</h2>
+          <div class="public-filterbar">
+            <p id="publicResultsCount" class="public-results-count">0 proyectos</p>
+          </div>
+          <section id="publicProjectsGrid" class="public-projects-grid"></section>
+        </div>
+      </section>
+      <button id="publicBackToTopBtn" class="floating-top-btn" type="button" hidden>↑</button>
 
+      <!-- SECCIÓN TU CASA EN 3D -->
+      <section class="section-3d">
+        <div class="section-3d__inner">
+          <div class="section-3d__copy">
+            <p class="site-eyebrow site-eyebrow--gold">Tu Casa en 3D</p>
+            <h2>Potencia tu promoción con imagen 3D profesional</h2>
+            <p>En Tu Casa en 3D creamos renders fotorrealistas, planos 3D, tours virtuales y todo el material visual que necesita una promoción para vender. Con TuPromoción, ese material se convierte en una web profesional lista para compartir y captar clientes.</p>
+            <ul class="section-3d__list">
+              <li>Renders exteriores e interiores fotorrealistas</li>
+              <li>Planos en 3D por tipología</li>
+              <li>Tours virtuales interactivos</li>
+              <li>Vídeos y animaciones de la promoción</li>
+            </ul>
+            <div class="section-3d__ctas">
+              <a class="site-btn site-btn--gold" href="https://tucasaen3d.es" target="_blank" rel="noopener">Visitar tucasaen3d.es</a>
+              <a class="site-btn site-btn--ghost-light" href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20saber%20m%C3%A1s%20sobre%20renders%203D" target="_blank" rel="noopener">WhatsApp</a>
+            </div>
+          </div>
+          <div class="section-3d__gallery">
+            <img src="https://tucasaen3d.es/wp-content/uploads/2021/08/ZPiscina-F1-001.jpg" alt="Render 3D zona piscina promoción" loading="lazy" />
+            <img src="https://tucasaen3d.es/wp-content/uploads/2022/05/SCC-006.0000.jpg" alt="Render 3D salón comedor" loading="lazy" />
+            <img src="https://tucasaen3d.es/wp-content/uploads/2021/08/ZCalle-F0-001.jpg" alt="Render 3D fachada exterior" loading="lazy" />
+            <img src="https://tucasaen3d.es/wp-content/uploads/2022/05/Cocina-002.0000.jpg" alt="Render 3D cocina equipada" loading="lazy" />
+            <img src="https://tucasaen3d.es/wp-content/uploads/2021/08/Drone-8.jpg" alt="Vista aérea drone promoción" loading="lazy" />
+            <img src="https://tucasaen3d.es/wp-content/uploads/2022/05/Dormitorio-pral-001.0000.jpg" alt="Render 3D dormitorio principal" loading="lazy" />
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
       <footer class="public-footer">
-        <p>Creado por <a href="https://tucasaen3d.es" target="_blank" rel="noopener">tucasaen3d.es</a></p>
+        <div class="public-footer__inner">
+          <img src="./img/tupromocion-logo.png" alt="TuPromoción" class="public-footer__logo" />
+          <p class="public-footer__tagline">Webs profesionales para promociones inmobiliarias</p>
+          <nav class="public-footer__links">
+            <a href="https://tucasaen3d.es" target="_blank" rel="noopener">Tu Casa en 3D</a>
+            <a href="https://api.whatsapp.com/send?phone=34634557033" target="_blank" rel="noopener">WhatsApp</a>
+            <a href="/admin">Acceso al panel</a>
+          </nav>
+          <p class="public-footer__legal">© 2025 TuPromoción · Una solución de Tu Casa en 3D</p>
+        </div>
       </footer>
+
     </section>
 
     <section id="authWorkspace" class="auth-screen" hidden>
