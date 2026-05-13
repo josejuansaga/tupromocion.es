@@ -164,6 +164,40 @@ select {
   width: auto;
 }
 
+.site-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.site-nav__links a {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--tp-text);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.site-nav__links a:hover {
+  color: var(--tp-green);
+}
+
+.site-nav__cta {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: var(--tp-white) !important;
+  background: var(--tp-green);
+  padding: 7px 18px;
+  border-radius: 999px;
+  transition: opacity 0.18s !important;
+}
+
+.site-nav__cta:hover {
+  opacity: 0.85;
+  color: var(--tp-white) !important;
+}
+
+/* legacy — mantenido por si algún script lo referencia */
 .site-nav__access {
   font-size: 0.85rem;
   font-weight: 500;
@@ -403,6 +437,127 @@ select {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
+}
+
+/* ─── QUIÉNES SOMOS ──────────────────────────────────────────── */
+
+.about-section {
+  background: var(--tp-bg);
+  padding: 88px 24px;
+}
+
+.about-section__inner {
+  max-width: var(--tp-inner);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.about-section__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.about-section__copy h2 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--tp-green);
+  margin: 0;
+}
+
+.about-section__copy p {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--tp-text);
+  margin: 0;
+}
+
+.about-section__visual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 12px;
+  height: 340px;
+}
+
+.about-section__visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.about-section__visual img:first-child {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+}
+
+.about-section__visual img:last-child {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+  margin-top: 32px;
+  height: calc(100% - 32px);
+}
+
+/* ─── BENEFICIOS ─────────────────────────────────────────────── */
+
+.benefits-section {
+  background: var(--tp-white);
+  padding: 88px 24px;
+}
+
+.benefits-section__inner {
+  max-width: var(--tp-inner);
+  margin: 0 auto;
+  display: grid;
+  gap: 40px;
+}
+
+.benefits-section__title {
+  text-align: center;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--tp-green);
+  margin: 8px auto 0;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.benefit-card {
+  background: var(--tp-bg);
+  border-radius: 12px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.benefit-card__icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.benefit-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--tp-green);
+  margin: 0;
+}
+
+.benefit-card p {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--tp-muted);
+  margin: 0;
 }
 
 /* ─── SECCIÓN TU CASA EN 3D ───────────────────────────────────── */
@@ -2614,19 +2769,30 @@ select:focus {
 /* ─── RESPONSIVE PORTADA PÚBLICA ──────────────────────────────── */
 
 @media (max-width: 900px) {
+  .site-nav { height: 60px; }
+
   .site-hero {
     grid-template-columns: 1fr;
     min-height: auto;
   }
 
   .site-hero__inner {
-    padding: 56px 24px 40px;
+    padding: 64px 28px 48px;
+    text-align: center;
   }
 
-  .site-hero__lead { max-width: 100%; }
+  .site-hero__lead {
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .site-hero__ctas {
+    justify-content: center;
+  }
 
   .site-hero__visual {
-    height: 260px;
+    height: 300px;
     order: -1;
   }
 
@@ -2635,40 +2801,209 @@ select:focus {
     gap: 16px;
   }
 
+  /* Nav links en tablet */
+  .site-nav__links {
+    gap: 18px;
+  }
+
+  .site-nav__links a { font-size: 0.82rem; }
+
+  /* Quiénes somos */
+  .about-section__inner {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .about-section__visual {
+    height: 260px;
+  }
+
+  /* Beneficios */
+  .benefits-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .section-3d__inner {
     grid-template-columns: 1fr;
     gap: 40px;
   }
 
+  .section-3d__copy {
+    order: -1;
+    text-align: center;
+  }
+
+  .section-3d__list {
+    text-align: left;
+    display: inline-block;
+  }
+
+  .section-3d__ctas {
+    justify-content: center;
+  }
+
   .section-3d__gallery {
-    grid-template-rows: repeat(2, 140px);
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 160px);
+  }
+
+  .public-footer__inner {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
+  }
+
+  .public-footer__links {
+    justify-content: center;
   }
 }
 
 @media (max-width: 600px) {
-  .site-nav { padding: 0 16px; }
-  .site-nav__logo img { height: 30px; }
+  /* Nav */
+  .site-nav { padding: 0 16px; height: 56px; }
+  .site-nav__logo img { height: 28px; }
   .site-nav__access { font-size: 0.78rem; padding: 6px 12px; }
 
-  .site-hero__inner { padding: 40px 20px 32px; }
-  .site-hero__ctas { flex-direction: column; }
+  /* Hero */
+  .site-hero__inner { padding: 48px 20px 36px; }
+  .site-hero__visual { height: 220px; }
+  .site-hero__ctas { flex-direction: column; align-items: stretch; }
   .site-btn { width: 100%; text-align: center; justify-content: center; }
 
+  /* Cómo funciona */
   .how-section { padding: 56px 20px; }
-  .how-step { padding: 24px 20px; }
+  .how-step { padding: 24px 16px; }
+  .how-step__num { font-size: 2rem; }
 
-  .catalog-section { padding: 56px 20px; }
+  /* Nav en móvil — ocultar textos intermedios, dejar logo y CTA */
+  .site-nav__links a:not(.site-nav__cta) { display: none; }
 
+  /* Quiénes somos */
+  .about-section { padding: 56px 20px; }
+  .about-section__visual { height: 200px; }
+  .about-section__visual img:last-child { margin-top: 20px; height: calc(100% - 20px); }
+
+  /* Beneficios */
+  .benefits-section { padding: 56px 20px; }
+  .benefits-grid { grid-template-columns: 1fr; }
+
+  /* Colaboradoras */
+  .partners-section { padding: 56px 20px; }
+  .partner-card { min-width: 140px; padding: 20px 20px; }
+
+  /* Sección 3D */
   .section-3d { padding: 56px 20px; }
   .section-3d__gallery {
     grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(3, 130px);
+    grid-template-rows: repeat(3, 120px);
   }
+  .section-3d__ctas { flex-direction: column; align-items: stretch; }
 
-  .section-3d__ctas { flex-direction: column; }
-
+  /* Footer */
   .public-footer { padding: 40px 20px 24px; }
-  .public-footer__links { gap: 16px; }
+  .public-footer__links {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .public-footer__legal { font-size: 0.74rem; }
+}
+
+@media (max-width: 380px) {
+  .site-hero__inner { padding: 40px 16px 32px; }
+  .about-section { padding: 44px 16px; }
+  .benefits-section { padding: 44px 16px; }
+  .how-section { padding: 48px 16px; }
+  .section-3d { padding: 48px 16px; }
+  .public-footer { padding: 36px 16px 20px; }
+  .floating-wa-btn { right: 14px; bottom: 14px; width: 50px; height: 50px; }
+}
+
+/* ─── EMPRESAS COLABORADORAS ─────────────────────────────────── */
+
+.partners-section {
+  background: var(--tp-bg);
+  padding: 80px 24px;
+}
+
+.partners-section__inner {
+  max-width: var(--tp-inner);
+  margin: 0 auto;
+  display: grid;
+  gap: 40px;
+}
+
+.partners-section__title {
+  text-align: center;
+  font-size: clamp(1.5rem, 2.8vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--tp-green);
+  margin: 8px auto 0;
+}
+
+.partners-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+}
+
+.partner-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 32px;
+  background: var(--tp-white);
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.07);
+  min-width: 180px;
+  max-width: 220px;
+  transition: box-shadow 0.2s, transform 0.2s;
+  text-decoration: none;
+  color: inherit;
+}
+
+.partner-card:hover {
+  box-shadow: 0 8px 28px rgba(26,51,32,0.1);
+  transform: translateY(-3px);
+}
+
+.partner-card__logo {
+  height: 64px;
+  max-width: 160px;
+  object-fit: contain;
+}
+
+.partner-card__initial {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--tp-green);
+  color: var(--tp-white);
+  font-size: 1.6rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.partner-card__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--tp-green);
+  text-align: center;
+  margin: 0;
+}
+
+.partner-card__location {
+  font-size: 0.78rem;
+  color: var(--tp-muted);
+  text-align: center;
+  margin: 0;
 }
 
 /* ─── BOTÓN FLOTANTE WHATSAPP ─────────────────────────────────── */

@@ -23,7 +23,12 @@
         <a class="site-nav__logo" href="/">
           <img src="./img/tupromocion-logo.png" alt="TuPromoción by Tu Casa en 3D" height="40" />
         </a>
-        <a class="site-nav__access" href="/admin">Acceso al panel</a>
+        <div class="site-nav__links">
+          <a href="#nosotros">Quiénes somos</a>
+          <a href="#beneficios">Beneficios</a>
+          <a href="#como-funciona">Cómo funciona</a>
+          <a class="site-nav__cta" href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromocion" target="_blank" rel="noopener">Contactar</a>
+        </div>
       </nav>
 
       <!-- HERO -->
@@ -33,7 +38,7 @@
           <h1 class="site-hero__title">Tu promoción,<br>lista para vender.</h1>
           <p class="site-hero__lead">Convertimos renders, planos y tipologías en una web profesional y elegante, lista para captar clientes desde el primer día. Una solución de <strong>Tu Casa en 3D</strong>.</p>
           <div class="site-hero__ctas">
-            <a class="site-btn site-btn--primary" href="#promociones">Ver promociones</a>
+            <a class="site-btn site-btn--primary" href="#como-funciona">Cómo funciona</a>
             <a class="site-btn site-btn--ghost" href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromocion" target="_blank" rel="noopener">Consultar por WhatsApp</a>
           </div>
         </div>
@@ -42,8 +47,77 @@
         </div>
       </header>
 
+      <!-- CATÁLOGO DE PROMOCIONES -->
+      <section id="promociones" class="catalog-section">
+        <div class="catalog-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Proyectos publicados</p>
+          <h2 class="catalog-section__title">Promociones activas</h2>
+          <div class="public-filterbar">
+            <p id="publicResultsCount" class="public-results-count">0 proyectos</p>
+          </div>
+          <section id="publicProjectsGrid" class="public-projects-grid"></section>
+        </div>
+      </section>
+
+      <!-- QUIÉNES SOMOS -->
+      <section id="nosotros" class="about-section">
+        <div class="about-section__inner">
+          <div class="about-section__copy">
+            <p class="site-eyebrow">Quiénes somos</p>
+            <h2>La imagen que vende, ahora también en web</h2>
+            <p>Somos <strong>Tu Casa en 3D</strong>, estudio especializado en visualización arquitectónica para el sector inmobiliario. Llevamos años ayudando a promotoras, arquitectos y comercializadoras a presentar sus proyectos con renders fotorrealistas, planos 3D, tours virtuales y vídeos de alta calidad.</p>
+            <p><strong>TuPromoción</strong> es nuestra respuesta a una necesidad que veíamos en cada proyecto: una vez creado el material visual, faltaba una web rápida, elegante y profesional donde mostrarlo. Sin complicaciones técnicas, sin webs genéricas, sin esperas.</p>
+            <a class="site-btn site-btn--primary" href="https://tucasaen3d.es" target="_blank" rel="noopener">Conocer Tu Casa en 3D</a>
+          </div>
+          <div class="about-section__visual">
+            <img src="https://tucasaen3d.es/wp-content/uploads/2021/08/Drone-6.jpg" alt="Render 3D exterior de promoción" loading="lazy" />
+            <img src="https://tucasaen3d.es/wp-content/uploads/2022/05/SCC-006.0000.jpg" alt="Render 3D salón" loading="lazy" />
+          </div>
+        </div>
+      </section>
+
+      <!-- BENEFICIOS -->
+      <section id="beneficios" class="benefits-section">
+        <div class="benefits-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Por qué elegirnos</p>
+          <h2 class="benefits-section__title">Todo lo que necesita tu promoción, sin complicaciones</h2>
+          <div class="benefits-grid">
+            <article class="benefit-card">
+              <span class="benefit-card__icon">⚡</span>
+              <h3>Web lista en 48 h</h3>
+              <p>Nos envías el material y en menos de dos días tienes la web publicada con tu propia URL.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">🎨</span>
+              <h3>Diseño profesional siempre</h3>
+              <p>Cada promoción tiene su propia web limpia y elegante, no una ficha dentro de un portal genérico.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">📸</span>
+              <h3>Galería y tipologías incluidas</h3>
+              <p>Galería de renders, planos por tipología, PDF descargable y formulario de contacto integrado.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">🔗</span>
+              <h3>Enlace directo y compartible</h3>
+              <p>Un enlace limpio para compartir en redes, email o WhatsApp. Sin login, sin portales intermedios.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">🔄</span>
+              <h3>Actualizable cuando quieras</h3>
+              <p>¿Nuevos renders, precio actualizado, nuevas tipologías? Lo actualizamos al momento.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">🏢</span>
+              <h3>Respaldado por Tu Casa en 3D</h3>
+              <p>El mismo equipo que crea el material visual gestiona la web. Todo en un solo lugar.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <!-- CÓMO FUNCIONA -->
-      <section class="how-section">
+      <section id="como-funciona" class="how-section">
         <div class="how-section__inner">
           <p class="site-eyebrow site-eyebrow--centered">Cómo funciona</p>
           <h2 class="how-section__title">De tu material comercial a la web en días</h2>
@@ -66,19 +140,6 @@
           </div>
         </div>
       </section>
-
-      <!-- CATÁLOGO DE PROMOCIONES -->
-      <section id="promociones" class="catalog-section">
-        <div class="catalog-section__inner">
-          <p class="site-eyebrow site-eyebrow--centered">Proyectos publicados</p>
-          <h2 class="catalog-section__title">Promociones activas</h2>
-          <div class="public-filterbar">
-            <p id="publicResultsCount" class="public-results-count">0 proyectos</p>
-          </div>
-          <section id="publicProjectsGrid" class="public-projects-grid"></section>
-        </div>
-      </section>
-      <button id="publicBackToTopBtn" class="floating-top-btn" type="button" hidden>↑</button>
 
       <a class="floating-wa-btn" href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromocion" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -113,6 +174,15 @@
         </div>
       </section>
 
+      <!-- EMPRESAS COLABORADORAS -->
+      <section id="colaboradoras" class="partners-section" hidden>
+        <div class="partners-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Empresas colaboradoras</p>
+          <h2 class="partners-section__title">Promotoras que ya confían en nosotros</h2>
+          <div id="partnersGrid" class="partners-grid"></div>
+        </div>
+      </section>
+
       <!-- FOOTER -->
       <footer class="public-footer">
         <div class="public-footer__inner">
@@ -120,8 +190,9 @@
           <p class="public-footer__tagline">Webs profesionales para promociones inmobiliarias</p>
           <nav class="public-footer__links">
             <a href="https://tucasaen3d.es" target="_blank" rel="noopener">Tu Casa en 3D</a>
+            <a href="#nosotros">Quiénes somos</a>
+            <a href="#beneficios">Beneficios</a>
             <a href="https://api.whatsapp.com/send?phone=34634557033" target="_blank" rel="noopener">WhatsApp</a>
-            <a href="/admin">Acceso al panel</a>
           </nav>
           <p class="public-footer__legal">© 2025 TuPromoción · Una solución de Tu Casa en 3D</p>
         </div>

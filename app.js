@@ -868,10 +868,40 @@ async function renderPublicHome() {
   if (els.clientWorkspace) els.clientWorkspace.hidden = true;
   if (els.editorWorkspace) els.editorWorkspace.hidden = true;
 
-  const result = await apiRequest("/public_projects.php");
-  publicProjectsCatalog = Array.isArray(result.data?.projects) ? result.data.projects : [];
+  const [projectsResult, clientsResult] = await Promise.all([
+    apiRequest("/public_projects.php"),
+    apiRequest("/public_clients.php"),
+  ]);
+
+  publicProjectsCatalog = Array.isArray(projectsResult.data?.projects) ? projectsResult.data.projects : [];
   bindPublicFilters();
   renderPublicCatalog();
+
+  const clients = Array.isArray(clientsResult.data) ? clientsResult.data : [];
+  renderPublicPartners(clients);
+}
+
+function renderPublicPartners(clients) {
+  const section = document.getElementById("colaboradoras");
+  const grid = document.getElementById("partnersGrid");
+  if (!section || !grid) return;
+
+  const visible = clients.filter(c => c.name && c.name.trim());
+  if (!visible.length) return;
+
+  grid.innerHTML = visible.map(c => {
+    const tag = c.website ? "a" : "div";
+    const href = c.website ? ` href="${escapeHtml(c.website)}" target="_blank" rel="noopener"` : "";
+    const logoHtml = c.logo
+      ? `<img class="partner-card__logo" src="${c.logo}" alt="${escapeHtml(c.name)}" loading="lazy" />`
+      : `<div class="partner-card__initial">${escapeHtml(c.name.trim()[0].toUpperCase())}</div>`;
+    const locationHtml = c.location
+      ? `<p class="partner-card__location">${escapeHtml(c.location)}</p>`
+      : "";
+    return `<${tag} class="partner-card"${href}>${logoHtml}<p class="partner-card__name">${escapeHtml(c.name)}</p>${locationHtml}</${tag}>`;
+  }).join("");
+
+  section.hidden = false;
 }
 
 function normalizeDatabase(payload) {
