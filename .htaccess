@@ -1,11 +1,9 @@
 Options -Indexes
 ServerSignature Off
 
-# Bloquear storage excepto assets (imágenes, PDFs)
+# Bloquear listado de storage (cada subdirectorio tiene su propio .htaccess)
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^storage/assets/ - [L]
-    RewriteRule ^storage(/|$) - [F,L]
 </IfModule>
 
 # Cabeceras de seguridad

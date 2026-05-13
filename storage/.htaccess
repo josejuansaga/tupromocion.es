@@ -1,4 +1,2 @@
-# Bloquear acceso directo a archivos de datos
-<FilesMatch "\.(json)$">
-    Deny from all
-</FilesMatch>
+Options -Indexes
+Deny from all
