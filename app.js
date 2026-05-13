@@ -406,6 +406,17 @@ function bindTopLevel() {
     assignClientToState(e.target.value);
     renderAll();
   });
+
+  // Auto-assign client when company name matches a datalist option
+  els.companyName?.addEventListener("input", (e) => {
+    const typed = e.target.value.trim().toLowerCase();
+    if (!typed) return;
+    const match = db.clients.find(c => c.name.trim().toLowerCase() === typed);
+    if (match && match.id !== state.clientId) {
+      assignClientToState(match.id);
+      renderAll();
+    }
+  });
   els.clientSearchInput?.addEventListener("input", (e) => {
     clientSearchTerm = String(e.target.value || "").trim().toLowerCase();
     renderHomeDashboardV2();
@@ -529,6 +540,12 @@ function bindActions() {
 
 // ─── render ────────────────────────────────────────────────────────────────────
 
+function renderClientsDatalist() {
+  const dl = document.getElementById("clientsDatalist");
+  if (!dl) return;
+  dl.innerHTML = db.clients.map(c => `<option value="${escapeAttr(c.name)}"></option>`).join("");
+}
+
 function renderAll() {
   state.designVariant = resolveDesignVariantKey(state.designVariant);
   const translation = getActiveTranslation();
@@ -538,6 +555,7 @@ function renderAll() {
   state.qualities = [...(translation.qualities || [])];
   state.pdfName = translation.pdfName || "";
   syncView();
+  renderClientsDatalist();
   renderAuthState();
   renderRoleUi();
   renderLanguageTabs();
