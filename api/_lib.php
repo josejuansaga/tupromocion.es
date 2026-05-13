@@ -98,7 +98,21 @@ function webinmo_read_json(string $path, $fallback) {
 
 function webinmo_write_json(string $path, $data): bool {
     $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    return file_put_contents($path, $json, LOCK_EX) !== false;
+    if ($json === false) {
+        return false;
+    }
+
+    $dir = dirname($path);
+    if (!is_dir($dir) && !mkdir($dir, 0777, true) && !is_dir($dir)) {
+        return false;
+    }
+
+    $tempPath = $path . '.tmp';
+    if (file_put_contents($tempPath, $json, LOCK_EX) === false) {
+        return false;
+    }
+
+    return @rename($tempPath, $path);
 }
 
 function webinmo_project_path(string $projectId): string {
@@ -521,6 +535,7 @@ function webinmo_bootstrap_payload(): array {
         'users' => webinmo_is_admin() ? webinmo_public_users() : [],
         'projects' => webinmo_visible_projects(),
         'analytics' => webinmo_visible_analytics(),
+        'leads' => webinmo_visible_leads(),
         'currentUser' => webinmo_current_user_public(),
         'backupSettings' => webinmo_is_admin() ? webinmo_load_backup_settings() : [],
     ];
@@ -579,6 +594,21 @@ function webinmo_load_leads(): array {
 
 function webinmo_save_leads(array $leads): bool {
     return webinmo_write_json(WEBINMO_LEADS_FILE, array_values($leads));
+}
+
+function webinmo_visible_leads(): array {
+    $leads = webinmo_load_leads();
+    if (webinmo_is_admin()) {
+        return $leads;
+    }
+
+    $visibleProjects = array_map(static function (array $project): string {
+        return (string) ($project['id'] ?? '');
+    }, webinmo_visible_projects());
+
+    return array_values(array_filter($leads, static function (array $lead) use ($visibleProjects): bool {
+        return in_array((string) ($lead['projectId'] ?? ''), $visibleProjects, true);
+    }));
 }
 
 function webinmo_submit_lead(array $payload): array {

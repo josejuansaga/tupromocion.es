@@ -89,18 +89,15 @@ const defaultState = {
 };
 
 const API_BASE = new URL(IS_ADMIN_ROUTE ? "../api/" : "./api/", window.location.href).pathname.replace(/\/$/, "");
-const LOCAL_DRAFT_DB_NAME = "webInmoDrafts";
-const LOCAL_DRAFT_STORE = "drafts";
-const LOCAL_DRAFT_KEY = "active-editor-draft";
-
 let state = structuredClone(defaultState);
-let db = { clients: [], users: [], projects: [], analytics: {}, currentUser: null, backupSettings: {} };
+let db = { clients: [], users: [], projects: [], analytics: {}, leads: [], currentUser: null, backupSettings: {} };
 let currentView = "auth";
-let localDraftSaveTimer = null;
-let localDraftRestoreChecked = false;
+let activeAdminSection = "control";
 let selectedUserId = "";
 let activeEditorLanguage = "es";
 let autosaveIntervalId = null;
+let clientSearchTerm = "";
+let promotionSearchTerm = "";
 let lastServerSavedSnapshot = "";
 let projectVersionsCache = [];
 let publicProjectsCatalog = [];
@@ -132,6 +129,8 @@ const els = {
   saveClientProfileBtn: document.querySelector("#saveClientProfileBtn"),
   dashboardStats:   document.querySelector("#dashboardStats"),
   dashboardProjects: document.querySelector("#dashboardProjects"),
+  contactsList: document.querySelector("#contactsList"),
+  adminTabs: Array.from(document.querySelectorAll("[data-admin-tab]")),
   usersPanel: document.querySelector("#usersPanel"),
   usersList: document.querySelector("#usersList"),
   backupSettingsPanel: document.querySelector("#backupSettingsPanel"),
@@ -141,6 +140,8 @@ const els = {
   userBackupsList: document.querySelector("#userBackupsList"),
   createUserBackupBtn: document.querySelector("#createUserBackupBtn"),
   clientCardsList:  document.querySelector("#clientCardsList"),
+  clientSearchInput: document.querySelector("#clientSearchInput"),
+  promotionSearchInput: document.querySelector("#promotionSearchInput"),
   dashboardSearch:  document.querySelector("#dashboardSearch"),
   dashboardStatusFilter: document.querySelector("#dashboardStatusFilter"),
   dashboardClientFilter: document.querySelector("#dashboardClientFilter"),
@@ -201,7 +202,6 @@ const els = {
   floorsList:       document.querySelector("#floorsList"),
   addFloorBtn:      document.querySelector("#addFloorBtn"),
   saveProjectBtn:   document.querySelector("#saveProjectBtn"),
-  restoreLocalDraftBtn: document.querySelector("#restoreLocalDraftBtn"),
   loadProjectInput: document.querySelector("#loadProjectInput"),
   downloadZipBtn:   document.querySelector("#downloadZipBtn"),
   downloadSiteBtn:  document.querySelector("#downloadSiteBtn"),
@@ -342,7 +342,6 @@ function bindTopLevel() {
       if (stateKey === "designVariant") syncDesignPicker();
       renderValidation();
       renderPreview();
-      scheduleLocalDraftBackup();
     });
     if (els[elKey]?.type === "url") {
       els[elKey].addEventListener("blur", (e) => {
@@ -353,7 +352,6 @@ function bindTopLevel() {
         }
         renderValidation();
         renderPreview();
-        scheduleLocalDraftBackup();
       });
     }
   });
@@ -372,7 +370,6 @@ function bindTopLevel() {
       if (activeEditorLanguage === "es") syncLegacyLocalizedFields(state, "es");
       renderValidation();
       renderPreview();
-      scheduleLocalDraftBackup();
     });
     if (els[elKey]?.type === "url") {
       els[elKey].addEventListener("blur", (e) => {
@@ -383,7 +380,6 @@ function bindTopLevel() {
         if (activeEditorLanguage === "es") syncLegacyLocalizedFields(state, "es");
         renderValidation();
         renderPreview();
-        scheduleLocalDraftBackup();
       });
     }
   });
@@ -394,12 +390,19 @@ function bindTopLevel() {
     if (activeEditorLanguage === "es") syncLegacyLocalizedFields(state, "es");
     renderValidation();
     renderPreview();
-    scheduleLocalDraftBackup();
   });
 
   els.clientSelect.addEventListener("change", (e) => {
     assignClientToState(e.target.value);
     renderAll();
+  });
+  els.clientSearchInput?.addEventListener("input", (e) => {
+    clientSearchTerm = String(e.target.value || "").trim().toLowerCase();
+    renderHomeDashboardV2();
+  });
+  els.promotionSearchInput?.addEventListener("input", (e) => {
+    promotionSearchTerm = String(e.target.value || "").trim().toLowerCase();
+    renderHomeDashboardV2();
   });
   els.dashboardClientFilter?.addEventListener("change", () => renderHomeDashboardV2());
   els.userRole?.addEventListener("change", () => renderUserFormState());
@@ -415,6 +418,12 @@ function bindTopLevel() {
     login();
   });
   els.logoutBtn?.addEventListener("click", () => logout());
+  els.adminTabs.forEach((button) => {
+    button.addEventListener("click", () => {
+      activeAdminSection = button.dataset.adminTab || "control";
+      renderAll();
+    });
+  });
 
   els.projectSelect.addEventListener("change", (e) => {
     if (!e.target.value) return;
@@ -456,10 +465,6 @@ function bindActions() {
     normalizeStateUrlsInPlace(state);
     downloadFile(`${slugify(state.companyName || state.projectName || "proyecto")}-copia.json`, "application/json", JSON.stringify(state, null, 2));
   });
-  els.restoreLocalDraftBtn?.addEventListener("click", () => {
-    void maybeRestoreLocalDraft({ force: true });
-  });
-
   els.loadProjectInput?.addEventListener("change", async (e) => {
     const [file] = e.target.files || [];
     if (!file) return;
@@ -467,7 +472,6 @@ function bindActions() {
       state = normalizeState(JSON.parse(await file.text()));
       currentView = "editor";
       renderAll();
-      scheduleLocalDraftBackup();
     } catch { window.alert("No se ha podido cargar el proyecto JSON."); }
     finally { e.target.value = ""; }
   });
@@ -522,6 +526,9 @@ function renderAll() {
   if (els.editorProjectMeta) {
     els.editorProjectMeta.textContent = getProjectDisplayName(state);
   }
+  if (els.publishProjectBtn) {
+    els.publishProjectBtn.textContent = state.projectStatus === "published" ? "Ver publicada" : "Publicar";
+  }
   els.designVariant.value    = state.designVariant;
   els.companyName.value     = state.companyName;
   els.headline.value        = translation.headline || "";
@@ -559,6 +566,7 @@ function renderAll() {
   renderManagementUi();
   renderUsersPanel();
   renderBackupSettingsPanel();
+  renderAdminSections();
   syncDesignPicker();
   renderValidation();
   renderFloors();
@@ -568,6 +576,18 @@ function renderAll() {
   renderPreview();
   if (currentView === "editor") {
     setSaveStatus("Edicion abierta", "idle");
+  }
+}
+
+function renderAdminSections() {
+  document.querySelectorAll("[data-admin-section]").forEach((node) => {
+    node.hidden = node.dataset.adminSection !== activeAdminSection;
+  });
+  els.adminTabs.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.adminTab === activeAdminSection);
+  });
+  if (activeAdminSection === "contacts") {
+    renderContactsPanel();
   }
 }
 
@@ -627,7 +647,6 @@ async function login() {
   currentView = "dashboard";
   rememberSavedSnapshot(state);
   startAutosaveLoop();
-  await maybeRestoreLocalDraft();
   renderAll();
 }
 
@@ -635,7 +654,6 @@ async function logout() {
   await apiRequest("/logout.php", { method: "POST" });
   currentView = "auth";
   stopAutosaveLoop();
-  localDraftRestoreChecked = false;
   selectedUserId = "";
   projectBackupsCache = [];
   userBackupsCache = [];
@@ -663,7 +681,6 @@ async function bootstrapApp() {
   hydrateDatabase();
   currentView = result.authenticated ? "dashboard" : "auth";
   if (result.authenticated) startAutosaveLoop();
-  if (result.authenticated) await maybeRestoreLocalDraft();
 }
 
 async function refreshDatabaseFromServer() {
@@ -772,19 +789,17 @@ function renderPublicCatalog() {
           ${cover
             ? `<img src="${escapeAttr(cover)}" alt="${escapeAttr(project.name || "Promocion")}" />`
             : `<div class="public-project-card__placeholder">${String(index + 1).padStart(2, "0")}</div>`}
+          <div class="public-project-card__overlay">
+            ${location ? `<span class="public-project-card__location">${escapeHtml(location)}</span>` : ""}
+          </div>
         </a>
         <div class="public-project-card__body">
-          <div class="public-project-card__meta">
-            ${province ? `<span>${escapeHtml(province)}</span>` : ""}
-            ${city ? `<span>${escapeHtml(city)}</span>` : ""}
-          </div>
           <h3>${escapeHtml(project.name || "Promocion")}</h3>
           <p>${escapeHtml(project?.state?.headline || "Promocion inmobiliaria publicada")}</p>
           <div class="public-project-card__footer">
             <strong>${escapeHtml(companyName || "Tupromocion.es")}</strong>
-            <span>${escapeHtml(location || "Ubicacion por definir")}</span>
+            <a class="primary-btn primary-btn--compact" href="${escapeAttr(getProjectPublicUrl(project.id))}">Ver promocion</a>
           </div>
-          <a class="primary-btn primary-btn--compact" href="${escapeAttr(getProjectPublicUrl(project.id))}">Ver proyecto</a>
         </div>
       </article>
     `;
@@ -810,6 +825,7 @@ function normalizeDatabase(payload) {
     users: Array.isArray(payload.users) ? payload.users : [],
     projects: Array.isArray(payload.projects) ? payload.projects : [],
     analytics: payload.analytics && typeof payload.analytics === "object" ? payload.analytics : {},
+    leads: Array.isArray(payload.leads) ? payload.leads : [],
     backupSettings: payload.backupSettings && typeof payload.backupSettings === "object" ? payload.backupSettings : {},
     currentUser: payload.currentUser && typeof payload.currentUser === "object" ? payload.currentUser : null,
   };
@@ -1283,7 +1299,6 @@ function buildZoneCard(zone, floor) {
 
 function renderPreview() {
   els.previewFrame.srcdoc = buildSiteHtml(state, { previewMode: true, currentLanguage: activeEditorLanguage });
-  scheduleLocalDraftBackup();
 }
 
 function renderStaticDropzones() {
@@ -1619,6 +1634,7 @@ function hydrateDatabase() {
     : [];
   db.projects = Array.isArray(db.projects) ? db.projects.filter(Boolean) : [];
   db.analytics = db.analytics && typeof db.analytics === "object" ? db.analytics : {};
+  db.leads = Array.isArray(db.leads) ? db.leads.filter((lead) => lead && typeof lead === "object") : [];
   db.backupSettings = db.backupSettings && typeof db.backupSettings === "object" ? db.backupSettings : {};
   if (!db.clients.length) ensureSeedClient();
 }
@@ -1774,13 +1790,11 @@ async function saveProjectRecord(statusOverride = "", { openPublishedWindow = fa
     state: structuredClone(state),
   };
   try {
-    await persistLocalDraft();
     const serverRecord = await prepareProjectForServerSave(record);
     const result = await apiRequest("/upsert_project.php", { method: "POST", body: { project: serverRecord } });
     if (!result.ok) {
-      downloadRescueState();
       setSaveStatus("Error al guardar", "error");
-      if (!silent) window.alert(result.error || "No se ha podido guardar la promocion. Te he descargado un rescate.");
+      if (!silent) window.alert(result.error || "No se ha podido guardar la promocion.");
       return false;
     }
     await refreshDatabaseFromServer();
@@ -1792,20 +1806,17 @@ async function saveProjectRecord(statusOverride = "", { openPublishedWindow = fa
       currentView = "dashboard";
     }
     renderAll();
-    cancelLocalDraftBackup();
-    await clearLocalDraft();
     setSaveStatus(`${autosave ? "Autoguardado" : "Guardado"} ${formatClockTime(now)}`, "saved");
     return true;
   } catch {
-    downloadRescueState();
     setSaveStatus("Error al guardar", "error");
-    if (!silent) window.alert("No se ha podido guardar la promocion. Te he descargado un rescate para no perder el trabajo.");
+    if (!silent) window.alert("No se ha podido guardar la promocion.");
     return false;
   }
 }
 
 async function openProjectLink() {
-  const saved = await saveProjectRecord();
+  const saved = await saveProjectRecord("published");
   if (!saved) return;
   window.open(getProjectPublicUrl(state.projectId), "_blank");
 }
@@ -1886,6 +1897,33 @@ async function deleteProject(projectId) {
   }
   if (state.projectId === projectId) state.projectId = "";
   await refreshDatabaseFromServer();
+  renderAll();
+}
+
+async function setProjectPublication(projectId, status) {
+  const project = getProjectById(projectId);
+  if (!project?.state) return;
+  const nextStatus = status === "published" ? "published" : "draft";
+  const record = {
+    ...project,
+    name: project.name || getProjectDisplayName(project),
+    status: nextStatus,
+    updatedAt: new Date().toISOString(),
+    state: {
+      ...normalizeState(project.state),
+      projectStatus: nextStatus,
+    },
+  };
+  const prepared = await prepareProjectForServerSave(record);
+  const result = await apiRequest("/upsert_project.php", { method: "POST", body: { project: prepared } });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido actualizar el estado de la promocion.");
+    return;
+  }
+  await refreshDatabaseFromServer();
+  if (state.projectId === projectId) {
+    state.projectStatus = nextStatus;
+  }
   renderAll();
 }
 
@@ -2216,6 +2254,29 @@ function getBackupReasonLabel(reason) {
   return "automatica";
 }
 
+function renderContactsPanel() {
+  if (!els.contactsList) return;
+  const leads = [...db.leads].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  els.contactsList.innerHTML = leads.length
+    ? leads.map((lead) => `
+      <article class="contact-card">
+        <div class="contact-card__top">
+          <div>
+            <strong>${escapeHtml(lead.name || "Contacto")}</strong>
+            <span>${escapeHtml(lead.projectName || "Promocion")}</span>
+          </div>
+          <em>${escapeHtml(formatShortDate(lead.createdAt))}</em>
+        </div>
+        <p>${escapeHtml(lead.message || "")}</p>
+        <div class="contact-card__meta">
+          ${lead.email ? `<a href="mailto:${escapeAttr(lead.email)}">${escapeHtml(lead.email)}</a>` : `<span>Sin email</span>`}
+          ${lead.phone ? `<a href="tel:${escapeAttr(String(lead.phone).replace(/\s/g, ""))}">${escapeHtml(lead.phone)}</a>` : `<span>Sin telefono</span>`}
+        </div>
+      </article>
+    `).join("")
+    : `<div class="dashboard-empty">Todavia no hay mensajes recibidos.</div>`;
+}
+
 async function saveUserFromForm() {
   const payload = {
     id: selectedUserId || safeRandomUUID(),
@@ -2403,6 +2464,10 @@ function renderHomeDashboard() {
 function renderHomeDashboardV2() {
   const clients = getUiClients();
   const activeClientFilter = els.dashboardClientFilter?.value || "";
+  const visibleClients = clients.filter((client) => {
+    if (!clientSearchTerm) return true;
+    return String(client.name || "").toLowerCase().includes(clientSearchTerm);
+  });
 
   if (els.dashboardClientFilter) {
     els.dashboardClientFilter.innerHTML = [`<option value="">Todos los clientes</option>`].concat(
@@ -2410,16 +2475,18 @@ function renderHomeDashboardV2() {
     ).join("");
     els.dashboardClientFilter.value = activeClientFilter;
   }
+  if (els.clientSearchInput) els.clientSearchInput.value = clientSearchTerm;
+  if (els.promotionSearchInput) els.promotionSearchInput.value = promotionSearchTerm;
 
   if (els.clientCardsList) {
     const hasRealClients = db.clients.length > 0;
-    els.clientCardsList.innerHTML = clients.length ? clients.map((client) => `
+    els.clientCardsList.innerHTML = visibleClients.length ? visibleClients.map((client) => `
       <button class="client-card${client.id === state.clientId ? " is-active" : ""}" type="button" data-client-card="${escapeAttr(client.id)}">
         ${client.logo ? `<img class="client-card__logo" src="${escapeAttr(client.logo)}" alt="${escapeAttr(client.name)}" />` : `<span class="client-card__mono">${escapeHtml(getInitials(client.name || "CL"))}</span>`}
         <strong>${escapeHtml(client.name || "Cliente sin nombre")}</strong>
         <span>${db.projects.filter((project) => project.clientId === client.id).length} promociones</span>
       </button>
-    `).join("") : `<div class="dashboard-empty">Todavia no hay clientes. Crea uno nuevo para empezar.</div>`;
+    `).join("") : `<div class="dashboard-empty">${clientSearchTerm ? "No hay empresas con ese nombre." : "Todavia no hay clientes. Crea uno nuevo para empezar."}</div>`;
     els.clientCardsList.querySelectorAll("[data-client-card]").forEach((button) => {
       button.addEventListener("click", () => {
         if (!hasRealClients && button.dataset.clientCard === "seed") {
@@ -2435,6 +2502,11 @@ function renderHomeDashboardV2() {
   if (!els.dashboardProjects) return;
   const projects = [...db.projects]
     .filter((project) => !activeClientFilter || project.clientId === activeClientFilter)
+    .filter((project) => {
+      if (!promotionSearchTerm) return true;
+      const client = getClientById(project.clientId);
+      return `${project.name || ""} ${client?.name || ""}`.toLowerCase().includes(promotionSearchTerm);
+    })
     .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
 
   els.dashboardProjects.innerHTML = `
@@ -2470,6 +2542,7 @@ function renderHomeDashboardV2() {
   els.dashboardProjects.querySelectorAll("[data-open-project]").forEach((button) => {
     button.addEventListener("click", () => openProject(button.dataset.openProject));
   });
+  enhanceDashboardProjectCards();
   els.dashboardProjects.querySelectorAll("[data-copy-project-link]").forEach((button) => {
     button.addEventListener("click", () => { void copyProjectLink(button.dataset.copyProjectLink); });
   });
@@ -2478,6 +2551,33 @@ function renderHomeDashboardV2() {
   });
   els.dashboardProjects.querySelectorAll("[data-delete-project]").forEach((button) => {
     button.addEventListener("click", () => { void deleteProject(button.dataset.deleteProject); });
+  });
+}
+
+function enhanceDashboardProjectCards() {
+  if (!els.dashboardProjects) return;
+  els.dashboardProjects.querySelectorAll(".promo-card").forEach((card) => {
+    const openButton = card.querySelector("[data-open-project]");
+    if (!openButton) return;
+    const projectId = openButton.dataset.openProject;
+    const project = getProjectById(projectId);
+    if (!project) return;
+
+    const main = card.querySelector(".promo-card__main");
+    if (main && !main.querySelector(".promo-card__badge")) {
+      main.insertAdjacentHTML("afterbegin", `<span class="status-badge status-badge--${escapeAttr(project.status || "draft")} promo-card__badge">${project.status === "published" ? "Publicado" : "Borrador"}</span>`);
+    }
+
+    const actions = card.querySelector(".promo-card__actions");
+    if (actions && !actions.querySelector("[data-toggle-project-status]")) {
+      actions.insertAdjacentHTML("afterbegin", `<button class="promo-mini-btn promo-mini-btn--accent" type="button" data-toggle-project-status="${escapeAttr(project.id)}" data-next-status="${project.status === "published" ? "draft" : "published"}">${project.status === "published" ? "Pasar a borrador" : "Publicar"}</button>`);
+    }
+  });
+
+  els.dashboardProjects.querySelectorAll("[data-toggle-project-status]").forEach((button) => {
+    if (button.dataset.bound === "true") return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => { void setProjectPublication(button.dataset.toggleProjectStatus, button.dataset.nextStatus); });
   });
 }
 

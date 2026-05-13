@@ -83,13 +83,20 @@
           </div>
         </header>
 
-        <section id="dashboardStats" class="dashboard-stats"></section>
+        <nav class="admin-sections-nav">
+          <button id="adminTabControl" class="admin-tab is-active" type="button" data-admin-tab="control">Panel de control</button>
+          <button id="adminTabClients" class="admin-tab" type="button" data-admin-tab="clients">Clientes / Promotoras</button>
+          <button id="adminTabPromotions" class="admin-tab" type="button" data-admin-tab="promotions">Promociones</button>
+          <button id="adminTabContacts" class="admin-tab" type="button" data-admin-tab="contacts">Contactos</button>
+        </nav>
 
-        <section class="home-clients-panel">
+        <section id="dashboardStats" class="dashboard-stats admin-section" data-admin-section="control"></section>
+
+        <section class="home-clients-panel admin-section" data-admin-section="clients" hidden>
           <div class="home-clients-panel__head">
             <div>
-              <h2>Clientes</h2>
-              <p>Selecciona el cliente activo para la próxima promoción.</p>
+              <h2>Clientes y promotoras</h2>
+              <p>Crea, edita y organiza las promotoras para usarlas después en las promociones.</p>
             </div>
             <div class="home-clients-panel__actions">
               <button id="newClientBtn" class="primary-btn primary-btn--compact" type="button">+ Nuevo cliente</button>
@@ -100,6 +107,10 @@
           </div>
           <div class="home-clients-panel__body">
             <label class="field">
+              <span>Buscar empresa</span>
+              <input id="clientSearchInput" type="search" placeholder="Escribe el nombre de la promotora" />
+            </label>
+            <label class="field">
               <span>Cliente para nueva promoción</span>
               <select id="clientSelect"></select>
             </label>
@@ -107,7 +118,7 @@
           </div>
         </section>
 
-        <section id="usersPanel" class="home-clients-panel" hidden>
+        <section id="usersPanel" class="home-clients-panel admin-section" data-admin-section="clients" hidden>
           <div class="home-clients-panel__head">
             <div>
               <h2>Usuarios</h2>
@@ -159,7 +170,7 @@
           </div>
         </section>
 
-        <section id="backupSettingsPanel" class="home-clients-panel" hidden>
+        <section id="backupSettingsPanel" class="home-clients-panel admin-section" data-admin-section="control" hidden>
           <div class="home-clients-panel__head">
             <div>
               <h2>Seguridad y copias</h2>
@@ -183,16 +194,22 @@
           </div>
         </section>
 
-        <section class="home-projects-panel">
+        <section class="home-projects-panel admin-section" data-admin-section="promotions">
           <div class="home-projects-panel__head">
             <div>
               <h2>Promociones</h2>
               <p>Todas las promociones aparecen aquí. El cliente solo filtra si lo necesitas.</p>
             </div>
-            <label class="field home-projects-filter">
-              <span>Filtrar por cliente</span>
-              <select id="dashboardClientFilter"></select>
-            </label>
+            <div class="home-projects-filters">
+              <label class="field home-projects-filter">
+                <span>Buscar empresa</span>
+                <input id="promotionSearchInput" type="search" placeholder="Escribe el nombre de la promotora" />
+              </label>
+              <label class="field home-projects-filter">
+                <span>Filtrar por cliente</span>
+                <select id="dashboardClientFilter"></select>
+              </label>
+            </div>
           </div>
           <div id="dashboardProjects" class="promo-grid"></div>
           <div class="home-project-meta" hidden>
@@ -213,6 +230,16 @@
             </label>
             <button id="saveProjectRecordBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar promoción</button>
           </div>
+        </section>
+
+        <section class="home-projects-panel admin-section" data-admin-section="contacts" hidden>
+          <div class="home-projects-panel__head">
+            <div>
+              <h2>Contactos y mensajes</h2>
+              <p>Consultas recibidas desde las promociones publicadas.</p>
+            </div>
+          </div>
+          <div id="contactsList" class="security-list"></div>
         </section>
       </div>
     </section>
@@ -528,7 +555,6 @@
           </div>
 
           <div class="actions">
-            <button id="restoreLocalDraftBtn" class="secondary-btn" type="button">Recuperar borrador local</button>
             <label class="file-action">
               <span>Cargar proyecto JSON</span>
               <input id="loadProjectInput" type="file" accept=".json,application/json" />

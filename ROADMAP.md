@@ -2,63 +2,65 @@
 
 ## Estado actual
 
-- En marcha: portada publica, acceso `/admin` y copias de seguridad.
-- Siguiente foco: revisar en servidor o local con PHP/Docker y rematar detalles visuales.
+- Hecho: portada publica con promociones publicadas.
+- Hecho: acceso privado en `/admin`.
+- Hecho: panel separado en `Panel de control`, `Clientes / Promotoras`, `Promociones` y `Contactos`.
+- Hecho: estado `Borrador / Publicado` para mostrar o esconder promociones en portada.
+- Hecho: backups cronologicos de proyectos y usuarios por separado.
+- Hecho: buscador por empresa en clientes y promociones dentro del admin.
 
 ## 1. Publicacion online
 
-- Conectar `tupromocion.es` al hosting.
-- Dejar la web publica en `/`.
-- Dejar el panel privado en `/admin`.
-- Comprobar SSL, dominio y guardado de archivos.
+- Subir esta version definitiva al hosting.
+- Apuntar `tupromocion.es` a la web publica.
+- Dejar `/admin` funcionando con login real.
+- Comprobar SSL, permisos y guardado en servidor.
 
-## 2. Portada publica
+## 2. Revision multiusuario
 
-- Mostrar solo promociones `publicadas`.
-- Crear tarjetas de proyecto con imagen, nombre y ubicacion.
-- Filtrar por `provincia` y `poblacion`.
-- Añadir acceso directo a cada promocion.
-- Dejar un diseño claro y facil de usar.
+- Revisar que varias personas puedan trabajar sin pisarse.
+- Confirmar que el guardado en servidor responde bien.
+- Probar crear, editar, publicar y borrar desde navegadores distintos.
+- Revisar que no quede ninguna dependencia real de trabajo local.
 
-## 3. Panel admin
+## 3. Seguridad y accesos
 
-- Login en `/admin`.
-- Acceso con usuario y contrasena.
-- Listado de proyectos.
-- Crear, editar, duplicar y borrar proyectos.
-- Publicar o dejar en borrador.
+- Cambiar la contrasena por defecto.
+- Revisar usuarios y permisos.
+- Definir si habra mas roles o solo administrador.
+- Revisar restauracion de copias desde el admin.
 
-## 4. Datos del proyecto
+## 4. Clientes y promociones
 
-- Guardar provincia y poblacion.
-- Completar nombre, portada, renders y planos.
-- Añadir textos comerciales.
-- Añadir contacto y enlaces.
-- Revisar SEO basico.
+- Mejorar la ficha de promotora.
+- Revisar orden, nombres y limpieza de clientes duplicados.
+- Añadir mas datos utiles de empresa si hacen falta.
+- Seguir puliendo la gestion de promociones desde admin.
 
-## 5. Flujo de publicacion
+## 5. Contactos y seguimiento
 
-- Si el proyecto esta `publicado`, aparece en portada.
-- Si vuelve a `borrador`, desaparece de portada.
-- Mantener enlace publico correcto por proyecto.
+- Revisar bien el listado de mensajes recibidos.
+- Mejorar lectura rapida de contactos.
+- Valorar filtros por promocion o fecha.
+- Valorar exportacion simple de contactos.
 
-## 6. Seguridad y orden
+## 6. Portada y presentacion
 
-- Cambiar la contrasena `admin123`.
-- Revisar permisos de la carpeta `storage`.
-- Preparar copia de seguridad.
-- Limpiar pruebas antiguas o proyectos duplicados.
+- Seguir limpiando la portada.
+- Destacar mejor promociones importantes.
+- Mejorar imagenes, copies y jerarquia visual.
+- Revisar version movil en detalle.
 
-## 7. Mejoras siguientes
+## 7. Siguiente fase
 
-- Buscador adicional.
-- Proyectos destacados en portada.
-- Formularios y analitica mejorados.
-- Mas idiomas si hacen falta.
-- Mejoras visuales finales.
+- SEO basico por promocion.
+- Analitica mas clara.
+- Formularios mejorados.
+- Posible soporte multiidioma.
+- Preparar una version mas cerrada para publicar de forma estable.
 
 ## Siguiente paso recomendado
 
-- Terminar la portada publica.
-- Montar `/admin`.
-- Subir la primera version al hosting.
+- Publicar esta version en el hosting.
+- Probar flujo completo de `cliente > promocion > publicar > contacto`.
+- Despues rematar seguridad y revision multiusuario.
