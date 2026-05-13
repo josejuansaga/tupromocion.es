@@ -123,67 +123,86 @@ select {
   gap: 18px;
 }
 
-.public-hero,
-.public-filters-card {
+.public-hero {
+  padding: 48px 8px 12px;
+  text-align: center;
+}
+
+.public-hero h1 {
+  margin: 6px 0 10px;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.public-hero p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.public-filterbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
   background: var(--panel);
   box-shadow: var(--shadow);
   backdrop-filter: blur(20px);
+  flex-wrap: wrap;
 }
 
-.public-hero {
-  padding: 34px 38px;
+.public-filterbar__field {
   display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-start;
-}
-
-.public-hero__copy h1 {
-  margin: 0 0 12px;
-  font-family: 'Instrument Serif', Georgia, serif;
-  font-size: clamp(2.2rem, 5vw, 3.8rem);
-  font-weight: 400;
-  line-height: 0.95;
-}
-
-.public-hero__copy p:last-child,
-.public-filters-card__top p {
-  margin: 0;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1 1 160px;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--muted);
-  line-height: 1.7;
-  max-width: 700px;
 }
 
-.public-filters-card {
-  padding: 22px;
-  display: grid;
-  gap: 18px;
-}
-
-.public-filters-card__top {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
+.public-filterbar__field select {
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .public-results-count {
-  margin: 0;
-  font-size: 0.86rem;
+  margin: 0 0 8px auto;
+  font-size: 0.82rem;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.public-filters,
 .security-list {
   display: grid;
   gap: 14px;
 }
 
-.public-filters {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.public-footer {
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+.public-footer p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.public-footer a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .public-projects-grid {
@@ -2123,8 +2142,6 @@ select:focus {
   .home-clients-panel__actions,
   .preview-topbar__actions,
   .home-dashboard__header-row,
-  .public-hero,
-  .public-filters-card__top,
   .contact-card__top {
     flex-direction: column;
     align-items: stretch;

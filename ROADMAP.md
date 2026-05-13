@@ -1,20 +1,27 @@
 # Roadmap WebInmobiliaria
 
-## Estado actual
+## Estado actual (2026-05-13)
 
 - Hecho: portada publica con promociones publicadas.
-- Hecho: acceso privado en `/admin`.
+- Hecho: acceso privado en `/admin` (oculto de la portada pública).
 - Hecho: panel separado en `Panel de control`, `Clientes / Promotoras`, `Promociones` y `Contactos`.
 - Hecho: estado `Borrador / Publicado` para mostrar o esconder promociones en portada.
 - Hecho: backups cronologicos de proyectos y usuarios por separado.
 - Hecho: buscador por empresa en clientes y promociones dentro del admin.
+- Hecho: deploy en tupromocion.es con Plesk + FTPS.
+- Hecho: SSL, permisos y protección de storage.
+- Hecho: Google Analytics (G-M28N9NPCG2) con consentimiento de cookies RGPD.
+- Hecho: miniaturas automáticas en subida de imágenes (480px, lazy loading).
+- Hecho: marca de agua con logo de cada promoción en esquina inferior derecha.
+- Hecho: tour virtual por tipología (campo URL + cover por planta).
+- Hecho: portada minimalista con filtro inline y crédito tucasaen3d.es.
 
-## 1. Publicacion online
+## 1. Publicacion online ✓
 
-- Subir esta version definitiva al hosting.
-- Apuntar `tupromocion.es` a la web publica.
-- Dejar `/admin` funcionando con login real.
-- Comprobar SSL, permisos y guardado en servidor.
+- ~~Subir esta version definitiva al hosting.~~
+- ~~Apuntar `tupromocion.es` a la web publica.~~
+- ~~Dejar `/admin` funcionando con login real.~~
+- ~~Comprobar SSL, permisos y guardado en servidor.~~
 
 ## 2. Revision multiusuario
 
@@ -55,14 +62,27 @@
 
 ## 7. Siguiente fase
 
-- SEO basico por promocion.
-- Analitica mas clara.
-- Formularios mejorados.
-- Posible soporte multiidioma.
+- SEO basico por promocion (título, descripción, og:image por proyecto).
+- Analitica mas clara (eventos GA: visita ficha, clic whatsapp, descarga PDF).
+- Formularios mejorados (más campos, respuesta automática al interesado).
+- Posible soporte multiidioma (inglés/ruso para costa).
 - Preparar una version mas cerrada para publicar de forma estable.
+
+## 8. Mejoras técnicas sugeridas
+
+- **URL amigable por promoción** — slug personalizable, ej: `tupromocion.es/maringo`. Mejora SEO y compartición.
+- **Notificación por email al llegar un contacto** — aviso inmediato sin tener que entrar al panel.
+- **Orden manual de imágenes** — drag & drop para reordenar fotos dentro de cada tipología.
+- **Estadísticas por promoción** — cuántas visitas, clics en whatsapp y descargas de PDF tiene cada una.
+- **Imagen webp automática** — convertir subidas a webp en el servidor para reducir tamaño un 30-50%.
+- **Preview antes de publicar** — botón "ver como visitante" desde el admin sin tener que publicar.
+- **Marca de agua automática en nuevas subidas** — ya genera miniatura al subir; añadir la marca al mismo flujo para no tener que lanzar script manual.
+- **Exportar ficha PDF desde admin** — generar un PDF descargable con renders, planos y calidades para enviar a compradores.
+- **Página de error 404 personalizada** — con branding y enlace a la portada.
+- **Banner "próximamente"** — estado intermedio entre borrador y publicado, visible en portada pero sin detalles.
 
 ## Siguiente paso recomendado
 
-- Publicar esta version en el hosting.
-- Probar flujo completo de `cliente > promocion > publicar > contacto`.
-- Despues rematar seguridad y revision multiusuario.
+- Probar flujo completo con nuevo proyecto: `cliente > promocion > subir imágenes > publicar > contacto`.
+- Rematar seguridad y revisión multiusuario.
+- Valorar URL amigable y notificación por email como próximas mejoras de mayor impacto.
