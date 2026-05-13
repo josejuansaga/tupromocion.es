@@ -1,9 +1,10 @@
 Options -Indexes
 ServerSignature Off
 
-# Bloquear acceso directo al directorio storage
+# Bloquear storage excepto assets (imágenes, PDFs)
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteRule ^storage/assets/ - [L]
     RewriteRule ^storage(/|$) - [F,L]
 </IfModule>
 
