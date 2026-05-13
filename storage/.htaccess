@@ -1,2 +1,6 @@
 Options -Indexes
-Deny from all
+
+# Bloquear acceso directo a los archivos de datos
+<FilesMatch "\.json$">
+    Require all denied
+</FilesMatch>
