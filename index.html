@@ -670,6 +670,74 @@
     </template>
 
     <script src="./app.js"></script>
+
+    <!-- Cookie consent + Google Analytics -->
+    <div id="cookie-bar" hidden>
+      <p>Usamos cookies propias y de terceros (Google Analytics) para analizar el uso de la web. Puedes aceptarlas o continuar solo con las esenciales.</p>
+      <div class="cookie-bar__actions">
+        <button id="cookie-accept" class="cookie-btn cookie-btn--primary">Aceptar todas</button>
+        <button id="cookie-reject" class="cookie-btn cookie-btn--secondary">Solo esenciales</button>
+      </div>
+    </div>
+
+    <style>
+      #cookie-bar {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+        background: #1a1a1a; color: #e8e8e8;
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        padding: .85rem 1.25rem; font-size: .82rem; line-height: 1.4;
+        box-shadow: 0 -2px 12px rgba(0,0,0,.25);
+      }
+      #cookie-bar[hidden] { display: none; }
+      #cookie-bar p { margin: 0; flex: 1; }
+      .cookie-bar__actions { display: flex; gap: .5rem; flex-shrink: 0; }
+      .cookie-btn { cursor: pointer; border: none; border-radius: 4px; padding: .45rem .9rem; font-size: .8rem; font-weight: 500; }
+      .cookie-btn--primary  { background: #fff; color: #1a1a1a; }
+      .cookie-btn--secondary{ background: transparent; color: #aaa; border: 1px solid #555; }
+      @media(max-width:600px){
+        #cookie-bar { flex-direction: column; align-items: flex-start; }
+        .cookie-bar__actions { width: 100%; }
+        .cookie-btn { flex: 1; }
+      }
+    </style>
+
+    <script>
+      (function () {
+        var GA_ID = "G-M28N9NPCG2";
+        var KEY   = "cookie_consent";
+
+        function loadGA() {
+          if (window._gaLoaded) return;
+          window._gaLoaded = true;
+          var s = document.createElement("script");
+          s.async = true;
+          s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function(){ window.dataLayer.push(arguments); };
+          gtag("js", new Date());
+          gtag("config", GA_ID, { anonymize_ip: true });
+        }
+
+        var consent = localStorage.getItem(KEY);
+        if (consent === "accepted") { loadGA(); return; }
+        if (consent === "rejected") { return; }
+
+        // No hay decision previa — mostrar banner
+        var bar = document.getElementById("cookie-bar");
+        bar.removeAttribute("hidden");
+
+        document.getElementById("cookie-accept").addEventListener("click", function () {
+          localStorage.setItem(KEY, "accepted");
+          bar.setAttribute("hidden", "");
+          loadGA();
+        });
+        document.getElementById("cookie-reject").addEventListener("click", function () {
+          localStorage.setItem(KEY, "rejected");
+          bar.setAttribute("hidden", "");
+        });
+      })();
+    </script>
   </body>
 </html>
 
