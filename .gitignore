@@ -3,6 +3,15 @@ node_modules/
 .claude/
 Versiones/
 
+# Datos de usuarios (no commitear en producción)
+storage/*.json
+storage/projects/
+storage/assets/
+storage/versions/
+storage/backups/
+!storage/.htaccess
+!storage/.gitkeep
+
 # OS / editor files
 .DS_Store
 Thumbs.db
