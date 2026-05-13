@@ -3258,10 +3258,13 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
               <div class="floor-gallery${z.images.length === 1 ? " floor-gallery--single" : ""}">
                 ${z.images.map((img, i) => {
                   const globalIdx = allFloorImages(floor).indexOf(img);
+                  const thumbSrc = img.replace(/(\.[^./?#]+)$/, '-thumb.jpg');
                   return `<figure class="floor-gallery__item${i === 0 ? " floor-gallery__item--hero" : ""}" data-reveal style="--reveal-delay:${i * 90}ms">
-                    <img src="${escapeAttr(img)}"
+                    <img src="${escapeAttr(thumbSrc)}"
+                         data-lb-src="${escapeAttr(img)}"
                          alt="${escapeAttr(`${floor.name || "Vivienda"} — ${z.name || "imagen"} ${i + 1}`)}"
                          class="lb-trigger"
+                         loading="lazy"
                          data-lb-floor="${floorId}"
                          data-lb-index="${globalIdx >= 0 ? globalIdx : i}" />
                   </figure>`;
@@ -3874,7 +3877,7 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
       var imgs=[],cur=0;
       function show(i){cur=(i+imgs.length)%imgs.length;lbImg.src=imgs[cur];lbCtr.textContent=imgs.length>1?(cur+1)+' / '+imgs.length:'';}
       function open(floorId,idx){
-        imgs=Array.from(document.querySelectorAll('img[data-lb-floor="'+floorId+'"]')).map(function(el){return el.src;});
+        imgs=Array.from(document.querySelectorAll('img[data-lb-floor="'+floorId+'"]')).map(function(el){return el.dataset.lbSrc||el.src;});
         if(!imgs.length)return;
         show(idx);lb.classList.add('lb--open');document.body.style.overflow='hidden';
       }

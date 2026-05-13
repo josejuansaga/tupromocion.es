@@ -1003,8 +1003,39 @@ function webinmo_store_asset(string $projectId, string $hint, string $dataUrl): 
         return ['ok' => false, 'error' => 'No se ha podido guardar el archivo.'];
     }
 
-    return [
-        'ok' => true,
-        'path' => './storage/assets/' . preg_replace('/[^a-zA-Z0-9_-]/', '', $projectId) . '/' . $filename,
-    ];
+    $safeProjectId = preg_replace('/[^a-zA-Z0-9_-]/', '', $projectId);
+    $relPath = './storage/assets/' . $safeProjectId . '/' . $filename;
+
+    // Generar miniatura para imágenes (no PDF ni SVG)
+    if (in_array($ext, ['jpg', 'png', 'webp'], true) && function_exists('imagecreatefromjpeg')) {
+        $thumbFilename = $safeHint . '-' . $hash . '-thumb.jpg';
+        $thumbPath = $dir . '/' . $thumbFilename;
+        webinmo_generate_thumb($path, $thumbPath, $mime, 480);
+    }
+
+    return ['ok' => true, 'path' => $relPath];
+}
+
+function webinmo_generate_thumb(string $src, string $dst, string $mime, int $maxW): void {
+    if (file_exists($dst)) return;
+    $img = match ($mime) {
+        'image/jpeg', 'image/jpg' => @imagecreatefromjpeg($src),
+        'image/png'               => @imagecreatefrompng($src),
+        'image/webp'              => @imagecreatefromwebp($src),
+        default                   => false,
+    };
+    if (!$img) return;
+    $w = imagesx($img);
+    $h = imagesy($img);
+    if ($w <= $maxW) { imagejpeg($img, $dst, 78); imagedestroy($img); return; }
+    $ratio = $maxW / $w;
+    $nw = $maxW;
+    $nh = (int) round($h * $ratio);
+    $thumb = imagecreatetruecolor($nw, $nh);
+    // Fondo blanco para PNGs con transparencia
+    imagefill($thumb, 0, 0, imagecolorallocate($thumb, 255, 255, 255));
+    imagecopyresampled($thumb, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+    imagejpeg($thumb, $dst, 78);
+    imagedestroy($img);
+    imagedestroy($thumb);
 }
