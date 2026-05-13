@@ -298,6 +298,47 @@ function webinmo_visible_projects(): array {
     }));
 }
 
+function webinmo_public_projects(): array {
+    $clientsById = [];
+    foreach (webinmo_load_clients() as $client) {
+        $clientId = (string) ($client['id'] ?? '');
+        if ($clientId !== '') {
+            $clientsById[$clientId] = $client;
+        }
+    }
+
+    $projects = array_values(array_filter(webinmo_load_all_projects(), static function (array $project): bool {
+        return (string) ($project['status'] ?? 'draft') === 'published';
+    }));
+
+    return array_map(static function (array $project) use ($clientsById): array {
+        $clientId = (string) ($project['clientId'] ?? '');
+        $client = $clientsById[$clientId] ?? [];
+        $state = is_array($project['state'] ?? null) ? $project['state'] : [];
+
+        return [
+            'id' => (string) ($project['id'] ?? ''),
+            'name' => (string) ($project['name'] ?? 'Promocion sin nombre'),
+            'status' => 'published',
+            'updatedAt' => (string) ($project['updatedAt'] ?? ''),
+            'createdAt' => (string) ($project['createdAt'] ?? ''),
+            'clientId' => $clientId,
+            'clientName' => (string) ($client['name'] ?? ($state['companyName'] ?? '')),
+            'state' => [
+                'projectName' => (string) ($state['projectName'] ?? ($project['name'] ?? '')),
+                'companyName' => (string) ($state['companyName'] ?? ''),
+                'headline' => (string) ($state['headline'] ?? ''),
+                'priceFrom' => (string) ($state['priceFrom'] ?? ''),
+                'locationName' => (string) ($state['locationName'] ?? ''),
+                'province' => (string) ($state['province'] ?? ''),
+                'city' => (string) ($state['city'] ?? ''),
+                'cover' => (string) ($state['cover'] ?? ''),
+                'logo' => (string) ($state['logo'] ?? ''),
+            ],
+        ];
+    }, $projects);
+}
+
 function webinmo_bootstrap_payload(): array {
     return [
         'clients' => webinmo_visible_clients(),

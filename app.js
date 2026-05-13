@@ -7,6 +7,8 @@ function safeRandomUUID() {
 
 const PUBLIC_PROJECT_ID = new URLSearchParams(window.location.search).get("promo") || "";
 const PUBLIC_LANGUAGE = new URLSearchParams(window.location.search).get("lang") || "es";
+const IS_ADMIN_ROUTE = /\/admin(?:\/|\/index\.html)?$/i.test(window.location.pathname);
+const IS_PUBLIC_HOME_ROUTE = !IS_ADMIN_ROUTE && !PUBLIC_PROJECT_ID;
 
 function createDefaultTranslation() {
   return {
@@ -42,6 +44,8 @@ const defaultState = {
   introText: "Un proyecto residencial contemporaneo con imagen cuidada, buena ubicacion y espacios pensados para el dia a dia.",
   priceFrom: "",
   locationName: "Calle Mayor 18, Madrid",
+  province: "",
+  city: "",
   mapsUrl: "https://www.google.com/maps",
   mapsEmbedUrl: "",
   youtubeUrl: "",
@@ -84,7 +88,7 @@ const defaultState = {
   ],
 };
 
-const API_BASE = "./api";
+const API_BASE = new URL(IS_ADMIN_ROUTE ? "../api/" : "./api/", window.location.href).pathname.replace(/\/$/, "");
 const LOCAL_DRAFT_DB_NAME = "webInmoDrafts";
 const LOCAL_DRAFT_STORE = "drafts";
 const LOCAL_DRAFT_KEY = "active-editor-draft";
@@ -99,8 +103,14 @@ let activeEditorLanguage = "es";
 let autosaveIntervalId = null;
 let lastServerSavedSnapshot = "";
 let projectVersionsCache = [];
+let publicProjectsCatalog = [];
 
 const els = {
+  publicWorkspace: document.querySelector("#publicWorkspace"),
+  publicProvinceFilter: document.querySelector("#publicProvinceFilter"),
+  publicCityFilter: document.querySelector("#publicCityFilter"),
+  publicProjectsGrid: document.querySelector("#publicProjectsGrid"),
+  publicResultsCount: document.querySelector("#publicResultsCount"),
   authWorkspace: document.querySelector("#authWorkspace"),
   loginForm: document.querySelector("#loginForm"),
   loginUsername: document.querySelector("#loginUsername"),
@@ -162,6 +172,8 @@ const els = {
   introText:        document.querySelector("#introText"),
   priceFrom:        document.querySelector("#priceFrom"),
   locationName:     document.querySelector("#locationName"),
+  province:         document.querySelector("#province"),
+  city:             document.querySelector("#city"),
   mapsUrl:          document.querySelector("#mapsUrl"),
   mapsEmbedUrl:     document.querySelector("#mapsEmbedUrl"),
   youtubeUrl:       document.querySelector("#youtubeUrl"),

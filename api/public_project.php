@@ -12,6 +12,10 @@ if (!$project || !is_array($project)) {
     webinmo_respond(['ok' => false, 'authenticated' => false, 'error' => 'Promocion no encontrada.'], 404);
 }
 
+if ((string) ($project['status'] ?? 'draft') !== 'published') {
+    webinmo_respond(['ok' => false, 'authenticated' => false, 'error' => 'Promocion no encontrada.'], 404);
+}
+
 webinmo_respond([
     'ok' => true,
     'authenticated' => false,

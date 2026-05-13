@@ -12,6 +12,41 @@
     <script src="./site-variants.js"></script>
   </head>
   <body>
+    <section id="publicWorkspace" class="public-shell" hidden>
+      <header class="public-hero">
+        <div class="public-hero__copy">
+          <p class="eyebrow">Tupromocion.es</p>
+          <h1>Promociones publicadas listas para descubrir</h1>
+          <p>Explora todos los proyectos publicados y filtra por provincia y población para encontrar cada promoción más rápido.</p>
+        </div>
+        <div class="public-hero__actions">
+          <a class="secondary-btn secondary-btn--compact" href="/admin/">Acceso admin</a>
+        </div>
+      </header>
+
+      <section class="public-filters-card">
+        <div class="public-filters-card__top">
+          <div>
+            <h2>Filtrar proyectos</h2>
+            <p>Solo se muestran las promociones publicadas.</p>
+          </div>
+          <p id="publicResultsCount" class="public-results-count">0 proyectos</p>
+        </div>
+        <div class="public-filters">
+          <label class="field">
+            <span>Provincia</span>
+            <select id="publicProvinceFilter"></select>
+          </label>
+          <label class="field">
+            <span>Población</span>
+            <select id="publicCityFilter"></select>
+          </label>
+        </div>
+      </section>
+
+      <section id="publicProjectsGrid" class="public-projects-grid"></section>
+    </section>
+
     <section id="authWorkspace" class="auth-screen" hidden>
       <div class="auth-screen__card">
         <div class="auth-screen__copy">
@@ -330,6 +365,16 @@
             <span>Nombre de la ubicacion</span>
             <input id="locationName" type="text" placeholder="Ej. Calle Mayor 18, Madrid" />
           </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Provincia</span>
+              <input id="province" type="text" placeholder="Ej. Madrid" />
+            </label>
+            <label class="field">
+              <span>Poblacion</span>
+              <input id="city" type="text" placeholder="Ej. Alcobendas" />
+            </label>
+          </div>
           <label class="field">
             <span>Enlace de Google Maps</span>
             <input id="mapsUrl" type="url" placeholder="https://www.google.com/maps/..." />
