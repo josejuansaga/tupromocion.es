@@ -70,7 +70,7 @@
       </div>
     </section>
 
-    <section id="homeDashboard" class="home-dashboard">
+    <section id="homeDashboard" class="home-dashboard" hidden>
       <div class="home-dashboard__shell">
         <header class="home-dashboard__header">
           <div class="home-dashboard__header-row">
@@ -144,8 +144,42 @@
               <button id="newUserBtn" class="primary-btn primary-btn--compact" type="button">+ Nuevo usuario</button>
               <button id="saveUserBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar usuario</button>
               <button id="deleteUserBtn" class="secondary-btn secondary-btn--compact" type="button">Borrar usuario</button>
+              <button id="createUserBackupBtn" class="secondary-btn secondary-btn--compact" type="button">Crear copia usuario</button>
             </div>
             <div id="usersList" class="users-list"></div>
+            <div class="security-panel">
+              <div class="security-panel__head">
+                <div>
+                  <h3>Copias del usuario</h3>
+                  <p>Historial cronológico del usuario seleccionado.</p>
+                </div>
+              </div>
+              <div id="userBackupsList" class="security-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="backupSettingsPanel" class="home-clients-panel" hidden>
+          <div class="home-clients-panel__head">
+            <div>
+              <h2>Seguridad y copias</h2>
+              <p>Configura cuántas copias cronológicas se guardan por proyecto y por usuario.</p>
+            </div>
+            <div class="home-clients-panel__actions">
+              <button id="saveBackupSettingsBtn" class="primary-btn primary-btn--compact" type="button">Guardar configuración</button>
+            </div>
+          </div>
+          <div class="home-clients-panel__body">
+            <div class="user-form-grid">
+              <label class="field">
+                <span>Copias por proyecto</span>
+                <input id="backupProjectsKeep" type="number" min="5" max="200" step="1" />
+              </label>
+              <label class="field">
+                <span>Copias por usuario</span>
+                <input id="backupUsersKeep" type="number" min="1" max="200" step="1" />
+              </label>
+            </div>
           </div>
         </section>
 
@@ -503,6 +537,26 @@
             <button id="downloadDossierBtn" class="secondary-btn" type="button">Abrir dossier PDF con diseño</button>
           </div>
           <div id="projectValidation" class="validation-box" hidden></div>
+        </section>
+
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Archivos</h2>
+            <span>Biblioteca del proyecto</span>
+          </div>
+          <div id="assetsLibrary" class="security-list"></div>
+        </section>
+
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Historial</h2>
+            <span>Versiones y copias del proyecto</span>
+          </div>
+          <div class="actions">
+            <button id="createProjectBackupBtn" class="secondary-btn" type="button">Crear copia del proyecto</button>
+          </div>
+          <div id="projectVersions" class="security-list"></div>
+          <div id="projectBackups" class="security-list"></div>
         </section>
       </aside>
 

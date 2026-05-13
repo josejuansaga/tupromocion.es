@@ -8,11 +8,15 @@ const WEBINMO_STORAGE_ROOT = __DIR__ . '/../storage';
 const WEBINMO_PROJECTS_DIR = WEBINMO_STORAGE_ROOT . '/projects';
 const WEBINMO_ASSETS_DIR = WEBINMO_STORAGE_ROOT . '/assets';
 const WEBINMO_VERSIONS_DIR = WEBINMO_STORAGE_ROOT . '/versions';
+const WEBINMO_BACKUPS_DIR = WEBINMO_STORAGE_ROOT . '/backups';
+const WEBINMO_PROJECT_BACKUPS_DIR = WEBINMO_BACKUPS_DIR . '/projects';
+const WEBINMO_USER_BACKUPS_DIR = WEBINMO_BACKUPS_DIR . '/users';
 const WEBINMO_USERS_FILE = WEBINMO_STORAGE_ROOT . '/users.json';
 const WEBINMO_CLIENTS_FILE = WEBINMO_STORAGE_ROOT . '/clients.json';
 const WEBINMO_PROJECT_INDEX_FILE = WEBINMO_STORAGE_ROOT . '/project-index.json';
 const WEBINMO_ANALYTICS_FILE = WEBINMO_STORAGE_ROOT . '/analytics.json';
 const WEBINMO_LEADS_FILE = WEBINMO_STORAGE_ROOT . '/leads.json';
+const WEBINMO_BACKUP_SETTINGS_FILE = WEBINMO_STORAGE_ROOT . '/backup-settings.json';
 const WEBINMO_SESSION_KEY = 'webinmo_user';
 
 function webinmo_respond(array $payload, int $status = 200): void {
@@ -44,6 +48,15 @@ function webinmo_ensure_storage(): void {
     if (!is_dir(WEBINMO_VERSIONS_DIR)) {
         mkdir(WEBINMO_VERSIONS_DIR, 0777, true);
     }
+    if (!is_dir(WEBINMO_BACKUPS_DIR)) {
+        mkdir(WEBINMO_BACKUPS_DIR, 0777, true);
+    }
+    if (!is_dir(WEBINMO_PROJECT_BACKUPS_DIR)) {
+        mkdir(WEBINMO_PROJECT_BACKUPS_DIR, 0777, true);
+    }
+    if (!is_dir(WEBINMO_USER_BACKUPS_DIR)) {
+        mkdir(WEBINMO_USER_BACKUPS_DIR, 0777, true);
+    }
     if (!file_exists(WEBINMO_USERS_FILE)) {
         webinmo_write_json(WEBINMO_USERS_FILE, [[
             'id' => 'user-admin',
@@ -65,6 +78,9 @@ function webinmo_ensure_storage(): void {
     }
     if (!file_exists(WEBINMO_LEADS_FILE)) {
         webinmo_write_json(WEBINMO_LEADS_FILE, []);
+    }
+    if (!file_exists(WEBINMO_BACKUP_SETTINGS_FILE)) {
+        webinmo_write_json(WEBINMO_BACKUP_SETTINGS_FILE, webinmo_default_backup_settings());
     }
 }
 
@@ -95,6 +111,166 @@ function webinmo_project_assets_dir(string $projectId): string {
 
 function webinmo_project_versions_path(string $projectId): string {
     return WEBINMO_VERSIONS_DIR . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '', $projectId) . '.json';
+}
+
+function webinmo_project_backups_path(string $projectId): string {
+    return WEBINMO_PROJECT_BACKUPS_DIR . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '', $projectId) . '.json';
+}
+
+function webinmo_user_backups_path(string $userId): string {
+    return WEBINMO_USER_BACKUPS_DIR . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) . '.json';
+}
+
+function webinmo_default_backup_settings(): array {
+    return [
+        'projects' => [
+            'enabled' => true,
+            'keep' => 30,
+        ],
+        'users' => [
+            'enabled' => true,
+            'keep' => 20,
+        ],
+    ];
+}
+
+function webinmo_normalize_backup_settings(array $settings): array {
+    $defaults = webinmo_default_backup_settings();
+    $projectKeep = (int) ($settings['projects']['keep'] ?? $defaults['projects']['keep']);
+    $userKeep = (int) ($settings['users']['keep'] ?? $defaults['users']['keep']);
+
+    return [
+        'projects' => [
+            'enabled' => (bool) ($settings['projects']['enabled'] ?? $defaults['projects']['enabled']),
+            'keep' => min(200, max(1, $projectKeep)),
+        ],
+        'users' => [
+            'enabled' => (bool) ($settings['users']['enabled'] ?? $defaults['users']['enabled']),
+            'keep' => min(200, max(1, $userKeep)),
+        ],
+    ];
+}
+
+function webinmo_load_backup_settings(): array {
+    webinmo_ensure_storage();
+    $settings = webinmo_read_json(WEBINMO_BACKUP_SETTINGS_FILE, webinmo_default_backup_settings());
+    return webinmo_normalize_backup_settings(is_array($settings) ? $settings : []);
+}
+
+function webinmo_save_backup_settings(array $settings): bool {
+    return webinmo_write_json(WEBINMO_BACKUP_SETTINGS_FILE, webinmo_normalize_backup_settings($settings));
+}
+
+function webinmo_load_project_backups(string $projectId): array {
+    $backups = webinmo_read_json(webinmo_project_backups_path($projectId), []);
+    return is_array($backups) ? $backups : [];
+}
+
+function webinmo_save_project_backups(string $projectId, array $backups): bool {
+    return webinmo_write_json(webinmo_project_backups_path($projectId), array_values($backups));
+}
+
+function webinmo_load_user_backups(string $userId): array {
+    $backups = webinmo_read_json(webinmo_user_backups_path($userId), []);
+    return is_array($backups) ? $backups : [];
+}
+
+function webinmo_save_user_backups(string $userId, array $backups): bool {
+    return webinmo_write_json(webinmo_user_backups_path($userId), array_values($backups));
+}
+
+function webinmo_record_project_backup(array $project, string $reason = 'save'): void {
+    $projectId = (string) ($project['id'] ?? '');
+    if ($projectId === '') {
+        return;
+    }
+    $settings = webinmo_load_backup_settings();
+    if (empty($settings['projects']['enabled'])) {
+        return;
+    }
+
+    $backups = webinmo_load_project_backups($projectId);
+    array_unshift($backups, [
+        'id' => uniqid('pbk_', true),
+        'projectId' => $projectId,
+        'name' => (string) ($project['name'] ?? 'Proyecto sin titulo'),
+        'status' => (string) ($project['status'] ?? 'draft'),
+        'savedAt' => (string) ($project['updatedAt'] ?? date(DATE_ATOM)),
+        'reason' => $reason,
+        'data' => $project,
+    ]);
+    $backups = array_slice($backups, 0, (int) $settings['projects']['keep']);
+    webinmo_save_project_backups($projectId, $backups);
+}
+
+function webinmo_record_user_backup(array $user, string $reason = 'save'): void {
+    $userId = (string) ($user['id'] ?? '');
+    if ($userId === '') {
+        return;
+    }
+    $settings = webinmo_load_backup_settings();
+    if (empty($settings['users']['enabled'])) {
+        return;
+    }
+
+    $backups = webinmo_load_user_backups($userId);
+    array_unshift($backups, [
+        'id' => uniqid('ubk_', true),
+        'userId' => $userId,
+        'name' => (string) ($user['name'] ?? ($user['username'] ?? 'Usuario')),
+        'username' => (string) ($user['username'] ?? ''),
+        'role' => (string) ($user['role'] ?? 'promoter'),
+        'savedAt' => (string) ($user['updatedAt'] ?? date(DATE_ATOM)),
+        'reason' => $reason,
+        'data' => $user,
+    ]);
+    $backups = array_slice($backups, 0, (int) $settings['users']['keep']);
+    webinmo_save_user_backups($userId, $backups);
+}
+
+function webinmo_project_backup_summaries(string $projectId): array {
+    return array_map(static function (array $backup): array {
+        return [
+            'id' => (string) ($backup['id'] ?? ''),
+            'projectId' => (string) ($backup['projectId'] ?? ''),
+            'name' => (string) ($backup['name'] ?? ''),
+            'status' => (string) ($backup['status'] ?? 'draft'),
+            'savedAt' => (string) ($backup['savedAt'] ?? ''),
+            'reason' => (string) ($backup['reason'] ?? 'save'),
+        ];
+    }, webinmo_load_project_backups($projectId));
+}
+
+function webinmo_user_backup_summaries(string $userId): array {
+    return array_map(static function (array $backup): array {
+        return [
+            'id' => (string) ($backup['id'] ?? ''),
+            'userId' => (string) ($backup['userId'] ?? ''),
+            'name' => (string) ($backup['name'] ?? ''),
+            'username' => (string) ($backup['username'] ?? ''),
+            'role' => (string) ($backup['role'] ?? 'promoter'),
+            'savedAt' => (string) ($backup['savedAt'] ?? ''),
+            'reason' => (string) ($backup['reason'] ?? 'save'),
+        ];
+    }, webinmo_load_user_backups($userId));
+}
+
+function webinmo_find_project_backup(string $projectId, string $backupId): ?array {
+    foreach (webinmo_load_project_backups($projectId) as $backup) {
+        if ((string) ($backup['id'] ?? '') === $backupId) {
+            return is_array($backup) ? $backup : null;
+        }
+    }
+    return null;
+}
+
+function webinmo_find_user_backup(string $userId, string $backupId): ?array {
+    foreach (webinmo_load_user_backups($userId) as $backup) {
+        if ((string) ($backup['id'] ?? '') === $backupId) {
+            return is_array($backup) ? $backup : null;
+        }
+    }
+    return null;
 }
 
 function webinmo_rrmdir(string $path): void {
@@ -346,6 +522,7 @@ function webinmo_bootstrap_payload(): array {
         'projects' => webinmo_visible_projects(),
         'analytics' => webinmo_visible_analytics(),
         'currentUser' => webinmo_current_user_public(),
+        'backupSettings' => webinmo_is_admin() ? webinmo_load_backup_settings() : [],
     ];
 }
 
@@ -471,7 +648,8 @@ function webinmo_record_project_version(array $project): void {
         'status' => (string) ($project['status'] ?? 'draft'),
         'state' => $project['state'] ?? [],
     ]);
-    $versions = array_slice($versions, 0, 20);
+    $settings = webinmo_load_backup_settings();
+    $versions = array_slice($versions, 0, (int) max(5, ($settings['projects']['keep'] ?? 20)));
     webinmo_save_project_versions($projectId, $versions);
 }
 
@@ -601,6 +779,7 @@ function webinmo_upsert_project(array $project): array {
         return ['ok' => false, 'error' => 'No se ha podido guardar el archivo de la promocion.'];
     }
     webinmo_record_project_version($project);
+    webinmo_record_project_backup($project);
 
     $index = webinmo_load_project_index();
     $meta = [
@@ -644,6 +823,7 @@ function webinmo_delete_project(string $projectId): array {
     if (!webinmo_can_access_project($existing)) {
         return ['ok' => false, 'error' => 'No tienes permisos para borrar esta promocion.'];
     }
+    webinmo_record_project_backup($existing, 'delete');
 
     $index = array_values(array_filter(webinmo_load_project_index(), static function (array $entry) use ($projectId): bool {
         return (string) ($entry['id'] ?? '') !== $projectId;
@@ -716,6 +896,7 @@ function webinmo_upsert_user(array $user): array {
     if (!webinmo_save_users($users)) {
         return ['ok' => false, 'error' => 'No se ha podido guardar el usuario.'];
     }
+    webinmo_record_user_backup($payload);
     return ['ok' => true];
 }
 
@@ -744,6 +925,7 @@ function webinmo_delete_user(string $userId): array {
     if ((string) ($target['role'] ?? '') === 'admin' && count($admins) <= 1) {
         return ['ok' => false, 'error' => 'Debe quedar al menos un administrador.'];
     }
+    webinmo_record_user_backup($target, 'delete');
     $users = array_values(array_filter($users, static function (array $user) use ($userId): bool {
         return (string) ($user['id'] ?? '') !== $userId;
     }));

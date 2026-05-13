@@ -1,5 +1,10 @@
 # Roadmap WebInmobiliaria
 
+## Estado actual
+
+- En marcha: portada publica, acceso `/admin` y copias de seguridad.
+- Siguiente foco: revisar en servidor o local con PHP/Docker y rematar detalles visuales.
+
 ## 1. Publicacion online
 
 - Conectar `tupromocion.es` al hosting.

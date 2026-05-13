@@ -114,6 +114,176 @@ select {
   padding: 28px;
 }
 
+.public-shell {
+  width: min(1240px, calc(100% - 32px));
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 28px 0 48px;
+  display: grid;
+  gap: 18px;
+}
+
+.public-hero,
+.public-filters-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+}
+
+.public-hero {
+  padding: 30px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.public-hero__copy h1 {
+  margin: 0 0 12px;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 400;
+  line-height: 0.95;
+}
+
+.public-hero__copy p:last-child,
+.public-filters-card__top p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.public-filters-card {
+  padding: 22px;
+  display: grid;
+  gap: 18px;
+}
+
+.public-filters-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.public-results-count {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.public-filters,
+.security-list {
+  display: grid;
+  gap: 14px;
+}
+
+.public-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.public-projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.public-project-card,
+.security-panel {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-sm);
+}
+
+.public-project-card {
+  overflow: hidden;
+}
+
+.public-project-card__media {
+  display: block;
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(135deg, rgba(27, 59, 53, 0.14), rgba(176, 133, 64, 0.18));
+}
+
+.public-project-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.public-project-card__placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 3rem;
+  color: var(--accent);
+}
+
+.public-project-card__body {
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.public-project-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.public-project-card__meta span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.public-project-card__body h3,
+.security-panel__head h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.public-project-card__body p,
+.security-panel__head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.public-project-card__footer {
+  display: grid;
+  gap: 4px;
+}
+
+.public-project-card__footer strong {
+  font-size: 0.9rem;
+}
+
+.public-project-card__footer span,
+.public-project-card__body small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.public-empty-state {
+  border: 1px dashed var(--line-strong);
+  border-radius: 24px;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.72);
+}
+
 .home-dashboard__shell {
   width: min(1180px, 100%);
   margin: 0 auto;
@@ -1429,6 +1599,23 @@ select:focus {
   color: var(--muted);
 }
 
+.security-panel {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.66);
+  display: grid;
+  gap: 14px;
+}
+
+.security-panel__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
 /* ─── preview area ───────────────────────────────────────── */
 
 .preview-area {
@@ -1795,7 +1982,8 @@ select:focus {
   }
 
   .dashboard-stats,
-  .inline-actions {
+  .inline-actions,
+  .public-filters {
     grid-template-columns: 1fr;
   }
 
@@ -1805,7 +1993,9 @@ select:focus {
 
   .home-clients-panel__actions,
   .preview-topbar__actions,
-  .home-dashboard__header-row {
+  .home-dashboard__header-row,
+  .public-hero,
+  .public-filters-card__top {
     flex-direction: column;
     align-items: stretch;
   }
@@ -1819,6 +2009,11 @@ select:focus {
 @media (max-width: 680px) {
   .home-dashboard {
     padding: 12px;
+  }
+
+  .public-shell {
+    width: min(100% - 24px, 100%);
+    padding-top: 12px;
   }
 
   .shell {

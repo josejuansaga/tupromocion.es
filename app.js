@@ -7,7 +7,7 @@ function safeRandomUUID() {
 
 const PUBLIC_PROJECT_ID = new URLSearchParams(window.location.search).get("promo") || "";
 const PUBLIC_LANGUAGE = new URLSearchParams(window.location.search).get("lang") || "es";
-const IS_ADMIN_ROUTE = /\/admin(?:\/|\/index\.html)?$/i.test(window.location.pathname);
+const IS_ADMIN_ROUTE = /\/admin(?:\/|\/index\.(?:html|php))?$/i.test(window.location.pathname);
 const IS_PUBLIC_HOME_ROUTE = !IS_ADMIN_ROUTE && !PUBLIC_PROJECT_ID;
 
 function createDefaultTranslation() {
@@ -94,7 +94,7 @@ const LOCAL_DRAFT_STORE = "drafts";
 const LOCAL_DRAFT_KEY = "active-editor-draft";
 
 let state = structuredClone(defaultState);
-let db = { clients: [], users: [], projects: [], analytics: {}, currentUser: null };
+let db = { clients: [], users: [], projects: [], analytics: {}, currentUser: null, backupSettings: {} };
 let currentView = "auth";
 let localDraftSaveTimer = null;
 let localDraftRestoreChecked = false;
@@ -104,6 +104,8 @@ let autosaveIntervalId = null;
 let lastServerSavedSnapshot = "";
 let projectVersionsCache = [];
 let publicProjectsCatalog = [];
+let projectBackupsCache = [];
+let userBackupsCache = [];
 
 const els = {
   publicWorkspace: document.querySelector("#publicWorkspace"),
@@ -132,6 +134,12 @@ const els = {
   dashboardProjects: document.querySelector("#dashboardProjects"),
   usersPanel: document.querySelector("#usersPanel"),
   usersList: document.querySelector("#usersList"),
+  backupSettingsPanel: document.querySelector("#backupSettingsPanel"),
+  backupProjectsKeep: document.querySelector("#backupProjectsKeep"),
+  backupUsersKeep: document.querySelector("#backupUsersKeep"),
+  saveBackupSettingsBtn: document.querySelector("#saveBackupSettingsBtn"),
+  userBackupsList: document.querySelector("#userBackupsList"),
+  createUserBackupBtn: document.querySelector("#createUserBackupBtn"),
   clientCardsList:  document.querySelector("#clientCardsList"),
   dashboardSearch:  document.querySelector("#dashboardSearch"),
   dashboardStatusFilter: document.querySelector("#dashboardStatusFilter"),
@@ -198,6 +206,10 @@ const els = {
   downloadZipBtn:   document.querySelector("#downloadZipBtn"),
   downloadSiteBtn:  document.querySelector("#downloadSiteBtn"),
   downloadDossierBtn: document.querySelector("#downloadDossierBtn"),
+  assetsLibrary: document.querySelector("#assetsLibrary"),
+  projectVersions: document.querySelector("#projectVersions"),
+  projectBackups: document.querySelector("#projectBackups"),
+  createProjectBackupBtn: document.querySelector("#createProjectBackupBtn"),
   previewFrame:     document.querySelector("#previewFrame"),
   floorTemplate:    document.querySelector("#floorTemplate"),
 };
@@ -209,6 +221,10 @@ init();
 async function init() {
   if (PUBLIC_PROJECT_ID) {
     await renderPublicProjectFromUrl(PUBLIC_PROJECT_ID);
+    return;
+  }
+  if (IS_PUBLIC_HOME_ROUTE) {
+    await renderPublicHome();
     return;
   }
   initEditorSections();
@@ -307,6 +323,7 @@ function bindTopLevel() {
     ["projectName", "projectName"], ["projectStatus", "projectStatus"],
     ["designVariant", "designVariant"], ["companyName", "companyName"],
     ["priceFrom", "priceFrom"], ["locationName", "locationName"],
+    ["province", "province"], ["city", "city"],
     ["mapsUrl", "mapsUrl"], ["mapsEmbedUrl", "mapsEmbedUrl"], ["virtualTourUrl", "virtualTourUrl"],
     ["companyLocation", "companyLocation"], ["companyWebsite", "companyWebsite"],
     ["contactPhone", "contactPhone"], ["contactEmail", "contactEmail"],
@@ -409,6 +426,7 @@ function bindTopLevel() {
   });
   els.saveDraftBtn?.addEventListener("click", () => saveProjectRecord());
   els.publishProjectBtn?.addEventListener("click", () => openProjectLink());
+  els.createProjectBackupBtn?.addEventListener("click", () => { void createEntityBackup("project", state.projectId); });
   els.backFromClientBtn?.addEventListener("click", () => {
     currentView = "dashboard";
     renderAll();
@@ -431,6 +449,8 @@ function bindActions() {
   els.newUserBtn?.addEventListener("click", () => resetUserForm());
   els.saveUserBtn?.addEventListener("click", () => { void saveUserFromForm(); });
   els.deleteUserBtn?.addEventListener("click", () => { void deleteSelectedUser(); });
+  els.saveBackupSettingsBtn?.addEventListener("click", () => { void saveBackupSettings(); });
+  els.createUserBackupBtn?.addEventListener("click", () => { void createEntityBackup("user", selectedUserId); });
 
   els.saveProjectBtn?.addEventListener("click", () => {
     normalizeStateUrlsInPlace(state);
@@ -508,6 +528,8 @@ function renderAll() {
   els.introText.value       = translation.introText || "";
   els.priceFrom.value       = state.priceFrom;
   els.locationName.value    = state.locationName;
+  if (els.province) els.province.value = state.province;
+  if (els.city) els.city.value = state.city;
   els.mapsUrl.value         = state.mapsUrl;
   if (els.mapsEmbedUrl) els.mapsEmbedUrl.value = state.mapsEmbedUrl;
   els.youtubeUrl.value      = translation.youtubeUrl || "";
@@ -536,9 +558,13 @@ function renderAll() {
   els.pdfName.value         = translation.pdfName || "";
   renderManagementUi();
   renderUsersPanel();
+  renderBackupSettingsPanel();
   syncDesignPicker();
   renderValidation();
   renderFloors();
+  renderAssetsLibrary();
+  renderProjectVersions();
+  renderProjectBackups();
   renderPreview();
   if (currentView === "editor") {
     setSaveStatus("Edicion abierta", "idle");
@@ -551,6 +577,7 @@ function isAdminUser() {
 
 function renderRoleUi() {
   if (els.usersPanel) els.usersPanel.hidden = !isAdminUser();
+  if (els.backupSettingsPanel) els.backupSettingsPanel.hidden = !isAdminUser();
   if (els.newClientBtn) els.newClientBtn.hidden = !isAdminUser();
   if (els.deleteClientBtn) els.deleteClientBtn.hidden = !isAdminUser();
   if (els.dashboardClientFilter?.closest("label")) {
@@ -560,6 +587,7 @@ function renderRoleUi() {
 }
 
 function syncView() {
+  if (els.publicWorkspace) els.publicWorkspace.hidden = true;
   if (els.authWorkspace) els.authWorkspace.hidden = currentView !== "auth";
   if (els.homeDashboard) els.homeDashboard.hidden = currentView !== "dashboard";
   if (els.clientWorkspace) els.clientWorkspace.hidden = currentView !== "client";
@@ -609,6 +637,8 @@ async function logout() {
   stopAutosaveLoop();
   localDraftRestoreChecked = false;
   selectedUserId = "";
+  projectBackupsCache = [];
+  userBackupsCache = [];
   if (els.loginUsername) els.loginUsername.value = "";
   if (els.loginPassword) els.loginPassword.value = "";
   db = { clients: [], users: [], projects: [], analytics: {}, currentUser: null };
@@ -662,12 +692,125 @@ async function renderPublicProjectFromUrl(projectId) {
   }
 }
 
+function bindPublicFilters() {
+  if (els.publicProvinceFilter && !els.publicProvinceFilter.dataset.bound) {
+    els.publicProvinceFilter.dataset.bound = "true";
+    els.publicProvinceFilter.addEventListener("change", () => {
+      populatePublicCityFilter();
+      renderPublicCatalog();
+    });
+  }
+  if (els.publicCityFilter && !els.publicCityFilter.dataset.bound) {
+    els.publicCityFilter.dataset.bound = "true";
+    els.publicCityFilter.addEventListener("change", () => renderPublicCatalog());
+  }
+  populatePublicProvinceFilter();
+  populatePublicCityFilter();
+}
+
+function inferProjectProvince(project) {
+  return String(project?.state?.province || "").trim();
+}
+
+function inferProjectCity(project) {
+  return String(project?.state?.city || "").trim();
+}
+
+function populatePublicProvinceFilter() {
+  if (!els.publicProvinceFilter) return;
+  const currentValue = els.publicProvinceFilter.value || "";
+  const provinces = [...new Set(publicProjectsCatalog.map(inferProjectProvince).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+  els.publicProvinceFilter.innerHTML = [`<option value="">Todas</option>`]
+    .concat(provinces.map((province) => `<option value="${escapeAttr(province)}">${escapeHtml(province)}</option>`))
+    .join("");
+  els.publicProvinceFilter.value = provinces.includes(currentValue) ? currentValue : "";
+}
+
+function populatePublicCityFilter() {
+  if (!els.publicCityFilter) return;
+  const currentValue = els.publicCityFilter.value || "";
+  const selectedProvince = String(els.publicProvinceFilter?.value || "").trim();
+  const cities = [...new Set(publicProjectsCatalog
+    .filter((project) => !selectedProvince || inferProjectProvince(project) === selectedProvince)
+    .map(inferProjectCity)
+    .filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "es"));
+  els.publicCityFilter.innerHTML = [`<option value="">Todas</option>`]
+    .concat(cities.map((city) => `<option value="${escapeAttr(city)}">${escapeHtml(city)}</option>`))
+    .join("");
+  els.publicCityFilter.value = cities.includes(currentValue) ? currentValue : "";
+}
+
+function getPublicFilteredProjects() {
+  const province = String(els.publicProvinceFilter?.value || "").trim();
+  const city = String(els.publicCityFilter?.value || "").trim();
+  return publicProjectsCatalog.filter((project) => {
+    const projectProvince = inferProjectProvince(project);
+    const projectCity = inferProjectCity(project);
+    if (province && province !== projectProvince) return false;
+    if (city && city !== projectCity) return false;
+    return true;
+  });
+}
+
+function renderPublicCatalog() {
+  if (!els.publicProjectsGrid) return;
+  const projects = getPublicFilteredProjects().sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  if (els.publicResultsCount) {
+    els.publicResultsCount.textContent = `${projects.length} ${projects.length === 1 ? "proyecto" : "proyectos"}`;
+  }
+
+  els.publicProjectsGrid.innerHTML = projects.length ? projects.map((project, index) => {
+    const cover = project?.state?.cover || project?.state?.logo || "";
+    const province = inferProjectProvince(project);
+    const city = inferProjectCity(project);
+    const companyName = String(project?.clientName || project?.state?.companyName || "").trim();
+    const location = [city, province].filter(Boolean).join(", ");
+    return `
+      <article class="public-project-card">
+        <a class="public-project-card__media" href="${escapeAttr(getProjectPublicUrl(project.id))}">
+          ${cover
+            ? `<img src="${escapeAttr(cover)}" alt="${escapeAttr(project.name || "Promocion")}" />`
+            : `<div class="public-project-card__placeholder">${String(index + 1).padStart(2, "0")}</div>`}
+        </a>
+        <div class="public-project-card__body">
+          <div class="public-project-card__meta">
+            ${province ? `<span>${escapeHtml(province)}</span>` : ""}
+            ${city ? `<span>${escapeHtml(city)}</span>` : ""}
+          </div>
+          <h3>${escapeHtml(project.name || "Promocion")}</h3>
+          <p>${escapeHtml(project?.state?.headline || "Promocion inmobiliaria publicada")}</p>
+          <div class="public-project-card__footer">
+            <strong>${escapeHtml(companyName || "Tupromocion.es")}</strong>
+            <span>${escapeHtml(location || "Ubicacion por definir")}</span>
+          </div>
+          <a class="primary-btn primary-btn--compact" href="${escapeAttr(getProjectPublicUrl(project.id))}">Ver proyecto</a>
+        </div>
+      </article>
+    `;
+  }).join("") : `<div class="public-empty-state">Todavia no hay promociones publicadas con esos filtros.</div>`;
+}
+
+async function renderPublicHome() {
+  if (els.publicWorkspace) els.publicWorkspace.hidden = false;
+  if (els.authWorkspace) els.authWorkspace.hidden = true;
+  if (els.homeDashboard) els.homeDashboard.hidden = true;
+  if (els.clientWorkspace) els.clientWorkspace.hidden = true;
+  if (els.editorWorkspace) els.editorWorkspace.hidden = true;
+
+  const result = await apiRequest("/public_projects.php");
+  publicProjectsCatalog = Array.isArray(result.data?.projects) ? result.data.projects : [];
+  bindPublicFilters();
+  renderPublicCatalog();
+}
+
 function normalizeDatabase(payload) {
   return {
     clients: Array.isArray(payload.clients) ? payload.clients : [],
     users: Array.isArray(payload.users) ? payload.users : [],
     projects: Array.isArray(payload.projects) ? payload.projects : [],
     analytics: payload.analytics && typeof payload.analytics === "object" ? payload.analytics : {},
+    backupSettings: payload.backupSettings && typeof payload.backupSettings === "object" ? payload.backupSettings : {},
     currentUser: payload.currentUser && typeof payload.currentUser === "object" ? payload.currentUser : null,
   };
 }
@@ -775,6 +918,7 @@ async function restoreProjectVersion(versionId) {
     state.projectStatus = project.status || state.projectStatus;
   }
   await loadProjectVersions(state.projectId);
+  await loadEntityBackups("project", state.projectId);
   rememberSavedSnapshot(state);
   renderAll();
 }
@@ -1464,15 +1608,18 @@ function hydrateDatabase() {
         .filter((user) => user && typeof user === "object")
         .map((user) => ({
           id: String(user.id || safeRandomUUID()),
+          name: String(user.name || user.username || "").trim(),
           username: String(user.username || "").trim() || "admin",
           password: String(user.password || ""),
           role: String(user.role || "admin"),
+          clientId: String(user.clientId || ""),
           createdAt: String(user.createdAt || new Date().toISOString()),
           updatedAt: String(user.updatedAt || new Date().toISOString()),
         }))
     : [];
   db.projects = Array.isArray(db.projects) ? db.projects.filter(Boolean) : [];
   db.analytics = db.analytics && typeof db.analytics === "object" ? db.analytics : {};
+  db.backupSettings = db.backupSettings && typeof db.backupSettings === "object" ? db.backupSettings : {};
   if (!db.clients.length) ensureSeedClient();
 }
 
@@ -1639,6 +1786,7 @@ async function saveProjectRecord(statusOverride = "", { openPublishedWindow = fa
     await refreshDatabaseFromServer();
     rememberSavedSnapshot(state);
     await loadProjectVersions(state.projectId);
+    await loadEntityBackups("project", state.projectId);
     if (openPublishedWindow && record.status === "published") {
       openPublishedProjectWindow(record.state);
       currentView = "dashboard";
@@ -1674,7 +1822,7 @@ function openPublishedProjectWindow(projectState) {
 }
 
 function getProjectPublicUrl(projectId) {
-  const url = new URL(window.location.href);
+  const url = new URL(IS_ADMIN_ROUTE ? "../" : "./", window.location.href);
   url.search = "";
   url.hash = "";
   url.searchParams.set("promo", projectId);
@@ -1794,7 +1942,7 @@ function openProject(projectId) {
   state.clientId = project.clientId || state.clientId;
   currentView = "editor";
   rememberSavedSnapshot(state);
-  void loadProjectVersions(state.projectId).then(() => renderAll());
+  void Promise.all([loadProjectVersions(state.projectId), loadEntityBackups("project", state.projectId)]).then(() => renderAll());
 }
 
 function getProjectVisitCount(projectId) {
@@ -1895,6 +2043,7 @@ function renderUsersPanel() {
   });
   if (selectedUserId) loadUserIntoForm(selectedUserId, { silent: true });
   else resetUserForm();
+  renderUserBackups();
 }
 
 function loadUserIntoForm(userId, { silent = false } = {}) {
@@ -1907,7 +2056,164 @@ function loadUserIntoForm(userId, { silent = false } = {}) {
   if (els.userRole) els.userRole.value = user.role || "promoter";
   if (els.userClientId) els.userClientId.value = user.clientId || db.clients[0]?.id || "";
   renderUserFormState();
+  void loadEntityBackups("user", user.id);
   if (!silent) renderUsersPanel();
+}
+
+function renderBackupSettingsPanel() {
+  if (!isAdminUser() || !els.backupSettingsPanel) return;
+  const settings = db.backupSettings || {};
+  const projectKeep = Number(settings.projects?.keep || 30);
+  const userKeep = Number(settings.users?.keep || 20);
+  if (els.backupProjectsKeep) els.backupProjectsKeep.value = String(projectKeep);
+  if (els.backupUsersKeep) els.backupUsersKeep.value = String(userKeep);
+}
+
+async function saveBackupSettings() {
+  const payload = {
+    settings: {
+      projects: {
+        enabled: true,
+        keep: Number(els.backupProjectsKeep?.value || 30),
+      },
+      users: {
+        enabled: true,
+        keep: Number(els.backupUsersKeep?.value || 20),
+      },
+    },
+  };
+  const result = await apiRequest("/backup_settings.php", { method: "POST", body: payload });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido guardar la configuracion de copias.");
+    return;
+  }
+  db = normalizeDatabase(result.data || {});
+  hydrateDatabase();
+  renderAll();
+  window.alert("Configuracion de copias guardada.");
+}
+
+async function loadEntityBackups(type, id) {
+  if (!id) {
+    if (type === "project") projectBackupsCache = [];
+    if (type === "user") userBackupsCache = [];
+    return;
+  }
+  const result = await apiRequest(`/entity_backups.php?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`);
+  const backups = result.ok && Array.isArray(result.data?.backups) ? result.data.backups : [];
+  if (type === "project") {
+    projectBackupsCache = backups;
+    renderProjectBackups();
+  } else {
+    userBackupsCache = backups;
+    renderUserBackups();
+  }
+}
+
+async function createEntityBackup(type, id) {
+  if (!id) {
+    window.alert(type === "project" ? "Primero guarda la promocion." : "Primero selecciona un usuario.");
+    return;
+  }
+  const result = await apiRequest("/create_entity_backup.php", {
+    method: "POST",
+    body: { type, id },
+  });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido crear la copia.");
+    return;
+  }
+  if (type === "project") {
+    projectBackupsCache = Array.isArray(result.data?.backups) ? result.data.backups : [];
+    renderProjectBackups();
+  } else {
+    userBackupsCache = Array.isArray(result.data?.backups) ? result.data.backups : [];
+    renderUserBackups();
+  }
+  window.alert("Copia creada.");
+}
+
+async function restoreEntityBackup(type, id, backupId) {
+  const confirmed = window.confirm("Se restaurara esta copia. Continuar?");
+  if (!confirmed) return;
+  const result = await apiRequest("/restore_entity_backup.php", {
+    method: "POST",
+    body: { type, id, backupId },
+  });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido restaurar la copia.");
+    return;
+  }
+  db = normalizeDatabase(result.data || {});
+  hydrateDatabase();
+  if (type === "project") {
+    const restored = getProjectById(id);
+    if (restored?.state) {
+      state = normalizeState(restored.state);
+      state.projectId = restored.id || state.projectId;
+      state.projectName = restored.name || state.projectName;
+      state.projectStatus = restored.status || state.projectStatus;
+      currentView = "editor";
+      rememberSavedSnapshot(state);
+      await loadProjectVersions(state.projectId);
+      await loadEntityBackups("project", state.projectId);
+    }
+  } else {
+    selectedUserId = id;
+    await loadEntityBackups("user", id);
+  }
+  renderAll();
+  window.alert("Copia restaurada.");
+}
+
+function renderProjectBackups() {
+  if (!els.projectBackups) return;
+  if (!state.projectId) {
+    els.projectBackups.innerHTML = `<div class="dashboard-empty">Guarda la promocion para tener copias cronologicas.</div>`;
+    return;
+  }
+  els.projectBackups.innerHTML = projectBackupsCache.length
+    ? projectBackupsCache.map((backup) => `
+      <article class="version-card">
+        <div>
+          <strong>${escapeHtml(backup.name || "Proyecto")}</strong>
+          <span>${escapeHtml(formatShortDate(backup.savedAt))} · ${escapeHtml(formatClockTime(backup.savedAt || new Date().toISOString()))} · ${escapeHtml(getBackupReasonLabel(backup.reason))}</span>
+        </div>
+        <button class="secondary-btn secondary-btn--compact" type="button" data-restore-project-backup="${escapeAttr(backup.id)}">Restaurar</button>
+      </article>
+    `).join("")
+    : `<div class="dashboard-empty">Aun no hay copias guardadas para esta promocion.</div>`;
+  els.projectBackups.querySelectorAll("[data-restore-project-backup]").forEach((button) => {
+    button.addEventListener("click", () => { void restoreEntityBackup("project", state.projectId, button.dataset.restoreProjectBackup); });
+  });
+}
+
+function renderUserBackups() {
+  if (!els.userBackupsList) return;
+  if (!selectedUserId) {
+    els.userBackupsList.innerHTML = `<div class="dashboard-empty">Selecciona un usuario para ver sus copias.</div>`;
+    return;
+  }
+  els.userBackupsList.innerHTML = userBackupsCache.length
+    ? userBackupsCache.map((backup) => `
+      <article class="version-card">
+        <div>
+          <strong>${escapeHtml(backup.name || backup.username || "Usuario")}</strong>
+          <span>${escapeHtml(formatShortDate(backup.savedAt))} · ${escapeHtml(formatClockTime(backup.savedAt || new Date().toISOString()))} · ${escapeHtml(getBackupReasonLabel(backup.reason))}</span>
+        </div>
+        <button class="secondary-btn secondary-btn--compact" type="button" data-restore-user-backup="${escapeAttr(backup.id)}">Restaurar</button>
+      </article>
+    `).join("")
+    : `<div class="dashboard-empty">Aun no hay copias guardadas para este usuario.</div>`;
+  els.userBackupsList.querySelectorAll("[data-restore-user-backup]").forEach((button) => {
+    button.addEventListener("click", () => { void restoreEntityBackup("user", selectedUserId, button.dataset.restoreUserBackup); });
+  });
+}
+
+function getBackupReasonLabel(reason) {
+  if (reason === "manual") return "manual";
+  if (reason === "delete") return "antes de borrar";
+  return "automatica";
 }
 
 async function saveUserFromForm() {
@@ -1931,6 +2237,7 @@ async function saveUserFromForm() {
   db = normalizeDatabase(result.data || {});
   hydrateDatabase();
   selectedUserId = payload.id;
+  await loadEntityBackups("user", selectedUserId);
   renderAll();
 }
 
@@ -1951,6 +2258,7 @@ async function deleteSelectedUser() {
   db = normalizeDatabase(result.data || {});
   hydrateDatabase();
   selectedUserId = "";
+  userBackupsCache = [];
   renderAll();
 }
 
@@ -2432,6 +2740,8 @@ function normalizeState(c) {
   n.introText       = String(c.introText      || n.introText);
   n.priceFrom       = String(c.priceFrom      || "");
   n.locationName    = String(c.locationName   || n.locationName);
+  n.province        = String(c.province       || "");
+  n.city            = String(c.city           || "");
   n.mapsUrl         = String(c.mapsUrl        || n.mapsUrl);
   n.mapsEmbedUrl    = String(c.mapsEmbedUrl   || "");
   n.youtubeUrl      = String(c.youtubeUrl     || "");
