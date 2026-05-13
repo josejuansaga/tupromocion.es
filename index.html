@@ -45,6 +45,7 @@
       </section>
 
       <section id="publicProjectsGrid" class="public-projects-grid"></section>
+      <button id="publicBackToTopBtn" class="floating-top-btn" type="button" hidden>Subir</button>
     </section>
 
     <section id="authWorkspace" class="auth-screen" hidden>
@@ -84,9 +85,9 @@
         </header>
 
         <nav class="admin-sections-nav">
-          <button id="adminTabControl" class="admin-tab is-active" type="button" data-admin-tab="control">Panel de control</button>
+          <button id="adminTabControl" class="admin-tab" type="button" data-admin-tab="control">Panel de control</button>
           <button id="adminTabClients" class="admin-tab" type="button" data-admin-tab="clients">Clientes / Promotoras</button>
-          <button id="adminTabPromotions" class="admin-tab" type="button" data-admin-tab="promotions">Promociones</button>
+          <button id="adminTabPromotions" class="admin-tab is-active" type="button" data-admin-tab="promotions">Promociones</button>
           <button id="adminTabContacts" class="admin-tab" type="button" data-admin-tab="contacts">Contactos</button>
         </nav>
 
@@ -238,6 +239,13 @@
               <h2>Contactos y mensajes</h2>
               <p>Consultas recibidas desde las promociones publicadas.</p>
             </div>
+            <div class="home-projects-filters">
+              <label class="field home-projects-filter">
+                <span>Filtrar por promoción</span>
+                <select id="contactProjectFilter"></select>
+              </label>
+              <button id="exportContactsBtn" class="secondary-btn secondary-btn--compact" type="button">Exportar contactos</button>
+            </div>
           </div>
           <div id="contactsList" class="security-list"></div>
         </section>
@@ -316,6 +324,17 @@
               <input id="clientProfileTwitter" type="url" placeholder="https://x.com/..." />
             </label>
           </div>
+        </section>
+
+        <section class="home-projects-panel">
+          <div class="home-projects-panel__head">
+            <div>
+              <h2>Promociones de esta empresa</h2>
+              <p>Aquí tienes todas las promociones vinculadas a esta promotora.</p>
+            </div>
+            <button id="createClientProjectBtn" class="primary-btn primary-btn--compact" type="button">+ Nueva promoción</button>
+          </div>
+          <div id="clientProjectsList" class="promo-grid"></div>
         </section>
       </div>
     </section>
@@ -623,6 +642,11 @@
           <span>Descripcion corta</span>
           <textarea class="floor-description" rows="3" placeholder="Ej. Vivienda luminosa con terraza y orientacion sur."></textarea>
         </label>
+        <label class="field">
+          <span>Link del tour virtual de esta tipologia</span>
+          <input class="floor-tour-url" type="url" placeholder="https://..." />
+        </label>
+        <div class="floor-tour-cover-wrap"></div>
 
         <div class="field-row">
           <label class="field">

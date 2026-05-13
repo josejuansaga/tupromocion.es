@@ -92,12 +92,13 @@ const API_BASE = new URL(IS_ADMIN_ROUTE ? "../api/" : "./api/", window.location.
 let state = structuredClone(defaultState);
 let db = { clients: [], users: [], projects: [], analytics: {}, leads: [], currentUser: null, backupSettings: {} };
 let currentView = "auth";
-let activeAdminSection = "control";
+let activeAdminSection = "promotions";
 let selectedUserId = "";
 let activeEditorLanguage = "es";
 let autosaveIntervalId = null;
 let clientSearchTerm = "";
 let promotionSearchTerm = "";
+let contactProjectFilter = "";
 let lastServerSavedSnapshot = "";
 let projectVersionsCache = [];
 let publicProjectsCatalog = [];
@@ -110,6 +111,7 @@ const els = {
   publicCityFilter: document.querySelector("#publicCityFilter"),
   publicProjectsGrid: document.querySelector("#publicProjectsGrid"),
   publicResultsCount: document.querySelector("#publicResultsCount"),
+  publicBackToTopBtn: document.querySelector("#publicBackToTopBtn"),
   authWorkspace: document.querySelector("#authWorkspace"),
   loginForm: document.querySelector("#loginForm"),
   loginUsername: document.querySelector("#loginUsername"),
@@ -130,6 +132,8 @@ const els = {
   dashboardStats:   document.querySelector("#dashboardStats"),
   dashboardProjects: document.querySelector("#dashboardProjects"),
   contactsList: document.querySelector("#contactsList"),
+  contactProjectFilter: document.querySelector("#contactProjectFilter"),
+  exportContactsBtn: document.querySelector("#exportContactsBtn"),
   adminTabs: Array.from(document.querySelectorAll("[data-admin-tab]")),
   usersPanel: document.querySelector("#usersPanel"),
   usersList: document.querySelector("#usersList"),
@@ -149,6 +153,8 @@ const els = {
   newClientBtn:     document.querySelector("#newClientBtn"),
   deleteClientBtn:  document.querySelector("#deleteClientBtn"),
   saveClientBtn:    document.querySelector("#saveClientBtn"),
+  createClientProjectBtn: document.querySelector("#createClientProjectBtn"),
+  clientProjectsList: document.querySelector("#clientProjectsList"),
   userName:         document.querySelector("#userName"),
   userUsername:     document.querySelector("#userUsername"),
   userPassword:     document.querySelector("#userPassword"),
@@ -405,6 +411,14 @@ function bindTopLevel() {
     renderHomeDashboardV2();
   });
   els.dashboardClientFilter?.addEventListener("change", () => renderHomeDashboardV2());
+  els.contactProjectFilter?.addEventListener("change", (e) => {
+    contactProjectFilter = String(e.target.value || "");
+    renderContactsPanel();
+  });
+  els.publicBackToTopBtn?.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  window.addEventListener("scroll", updatePublicBackToTopButton, { passive: true });
   els.userRole?.addEventListener("change", () => renderUserFormState());
   els.addLanguageBtn?.addEventListener("click", () => {
     if (getProjectLanguages().includes("en")) return;
@@ -444,6 +458,7 @@ function bindTopLevel() {
     currentView = "client";
     renderAll();
   });
+  els.createClientProjectBtn?.addEventListener("click", () => createProject());
 
 }
 
@@ -460,6 +475,7 @@ function bindActions() {
   els.deleteUserBtn?.addEventListener("click", () => { void deleteSelectedUser(); });
   els.saveBackupSettingsBtn?.addEventListener("click", () => { void saveBackupSettings(); });
   els.createUserBackupBtn?.addEventListener("click", () => { void createEntityBackup("user", selectedUserId); });
+  els.exportContactsBtn?.addEventListener("click", () => exportContactsCsv());
 
   els.saveProjectBtn?.addEventListener("click", () => {
     normalizeStateUrlsInPlace(state);
@@ -567,6 +583,7 @@ function renderAll() {
   renderUsersPanel();
   renderBackupSettingsPanel();
   renderAdminSections();
+  renderClientProjectsPanel();
   syncDesignPicker();
   renderValidation();
   renderFloors();
@@ -770,13 +787,18 @@ function getPublicFilteredProjects() {
   });
 }
 
+function updatePublicBackToTopButton() {
+  if (!els.publicBackToTopBtn) return;
+  const shouldShow = window.scrollY > 520 && !els.publicWorkspace?.hidden;
+  els.publicBackToTopBtn.hidden = !shouldShow;
+}
+
 function renderPublicCatalog() {
   if (!els.publicProjectsGrid) return;
   const projects = getPublicFilteredProjects().sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
   if (els.publicResultsCount) {
     els.publicResultsCount.textContent = `${projects.length} ${projects.length === 1 ? "proyecto" : "proyectos"}`;
   }
-
   els.publicProjectsGrid.innerHTML = projects.length ? projects.map((project, index) => {
     const cover = project?.state?.cover || project?.state?.logo || "";
     const province = inferProjectProvince(project);
@@ -804,6 +826,7 @@ function renderPublicCatalog() {
       </article>
     `;
   }).join("") : `<div class="public-empty-state">Todavia no hay promociones publicadas con esos filtros.</div>`;
+  updatePublicBackToTopButton();
 }
 
 async function renderPublicHome() {
@@ -1135,6 +1158,8 @@ function renderFloors() {
     const delBtn   = frag.querySelector(".floor-delete-btn");
     const nameInp  = frag.querySelector(".floor-name");
     const descInp  = frag.querySelector(".floor-description");
+    const tourUrlInp = frag.querySelector(".floor-tour-url");
+    const tourCoverWrap = frag.querySelector(".floor-tour-cover-wrap");
     const areaInp  = frag.querySelector(".floor-area");
     const bedInp   = frag.querySelector(".floor-bedrooms");
     const bathInp  = frag.querySelector(".floor-bathrooms");
@@ -1145,12 +1170,20 @@ function renderFloors() {
     title.textContent = floorTranslation.name || `Tipologia ${index + 1}`;
     nameInp.value  = floorTranslation.name || "";
     descInp.value  = floorTranslation.description || "";
+    tourUrlInp.value = floor.virtualTourUrl || "";
     areaInp.value  = floor.area;
     bedInp.value   = floor.bedrooms;
     bathInp.value  = floor.bathrooms;
 
     nameInp.addEventListener("input", (e) => { floorTranslation.name = e.target.value; if (activeEditorLanguage === "es") floor.name = e.target.value; title.textContent = floorTranslation.name || `Tipologia ${index + 1}`; renderPreview(); });
     descInp.addEventListener("input", (e) => { floorTranslation.description = e.target.value; if (activeEditorLanguage === "es") floor.description = e.target.value; renderPreview(); });
+    tourUrlInp.addEventListener("input", (e) => { floor.virtualTourUrl = e.target.value; renderPreview(); });
+    tourUrlInp.addEventListener("blur", (e) => {
+      const normalized = normalizeUrl(e.target.value);
+      e.target.value = normalized;
+      floor.virtualTourUrl = normalized;
+      renderPreview();
+    });
     areaInp.addEventListener("input", (e) => { floor.area = e.target.value; renderPreview(); });
     bedInp.addEventListener("input",  (e) => { floor.bedrooms = e.target.value; renderPreview(); });
     bathInp.addEventListener("input", (e) => { floor.bathrooms = e.target.value; renderPreview(); });
@@ -1179,6 +1212,23 @@ function renderFloors() {
       renderAll();
     });
     zonesWrap.appendChild(addZoneBtn);
+
+    const tourLabel = document.createElement("p");
+    tourLabel.className = "drop-label";
+    tourLabel.textContent = "Portada del tour de esta tipologia";
+    tourCoverWrap.appendChild(tourLabel);
+
+    const tourNode = document.createElement("div");
+    tourNode.className = "dropzone";
+    tourCoverWrap.appendChild(tourNode);
+
+    setupDropzone({
+      node: tourNode, multiple: false, accept: "image/*",
+      onFiles: async (files) => { floor.virtualTourCover = await compressImage(files[0], 1600, 0.84) || null; renderAll(); },
+      preview: () => floor.virtualTourCover
+        ? `<div class="single-thumb"><img src="${escapeAttr(floor.virtualTourCover)}" alt="Portada del tour de la tipologia" /></div>`
+        : dropzoneText("Arrastra una portada", "opcional para esta tipologia"),
+    });
 
     // plan
     const planLabel = document.createElement("p");
@@ -1514,6 +1564,7 @@ async function downloadZip(s) {
     pdfFile: await reg(s.pdfFile, "dossier"),
     floors:  await Promise.all(s.floors.map(async (f) => ({
       ...f,
+      virtualTourCover: await reg(f.virtualTourCover, "floor-tour-cover"),
       zones: await Promise.all(f.zones.map(async (z) => ({ ...z, images: await Promise.all(z.images.map(img => reg(img, "render"))) }))),
       plan: await reg(f.plan, "plan"),
     }))),
@@ -1532,7 +1583,18 @@ async function downloadZip(s) {
 // ─── helpers ───────────────────────────────────────────────────────────────────
 
 function createFloor() {
-  return { id: safeRandomUUID(), name: "", description: "", area: "", bedrooms: "", bathrooms: "", zones: [{ id: safeRandomUUID(), name: "General", images: [] }], plan: null };
+  return {
+    id: safeRandomUUID(),
+    name: "",
+    description: "",
+    area: "",
+    bedrooms: "",
+    bathrooms: "",
+    virtualTourUrl: "",
+    virtualTourCover: null,
+    zones: [{ id: safeRandomUUID(), name: "General", images: [] }],
+    plan: null,
+  };
 }
 
 function duplicateFloor(floorId) {
@@ -1938,6 +2000,7 @@ async function prepareProjectForServerSave(record) {
     clone.state.pdfFile = await uploadAssetIfNeeded(projectId, "dossier", clone.state.pdfFile);
     clone.state.floors = await Promise.all((clone.state.floors || []).map(async (floor, floorIndex) => ({
       ...floor,
+      virtualTourCover: await uploadAssetIfNeeded(projectId, `tour-floor-${floorIndex + 1}`, floor.virtualTourCover),
       zones: await Promise.all((floor.zones || []).map(async (zone, zoneIndex) => ({
         ...zone,
         images: await Promise.all((zone.images || []).map((image, imageIndex) => uploadAssetIfNeeded(projectId, `render-${floorIndex + 1}-${zoneIndex + 1}-${imageIndex + 1}`, image))),
@@ -2256,7 +2319,18 @@ function getBackupReasonLabel(reason) {
 
 function renderContactsPanel() {
   if (!els.contactsList) return;
-  const leads = [...db.leads].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  const projectOptions = [...db.projects].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  if (els.contactProjectFilter) {
+    const currentValue = contactProjectFilter || els.contactProjectFilter.value || "";
+    els.contactProjectFilter.innerHTML = [`<option value="">Todas las promociones</option>`]
+      .concat(projectOptions.map((project) => `<option value="${escapeAttr(project.id)}">${escapeHtml(project.name || "Promocion sin nombre")}</option>`))
+      .join("");
+    els.contactProjectFilter.value = currentValue;
+    contactProjectFilter = currentValue;
+  }
+  const leads = [...db.leads]
+    .filter((lead) => !contactProjectFilter || String(lead.projectId || "") === contactProjectFilter)
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
   els.contactsList.innerHTML = leads.length
     ? leads.map((lead) => `
       <article class="contact-card">
@@ -2275,6 +2349,57 @@ function renderContactsPanel() {
       </article>
     `).join("")
     : `<div class="dashboard-empty">Todavia no hay mensajes recibidos.</div>`;
+}
+
+function renderClientProjectsPanel() {
+  if (!els.clientProjectsList) return;
+  const projects = [...db.projects]
+    .filter((project) => project.clientId === state.clientId)
+    .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  els.clientProjectsList.innerHTML = projects.length
+    ? projects.map((project, index) => {
+      const thumb = project.state?.cover || project.state?.logo || "";
+      return `
+        <article class="promo-card">
+          <button class="promo-card__main" type="button" data-open-client-project="${escapeAttr(project.id)}">
+            ${thumb
+              ? `<img class="promo-card__thumb" src="${escapeAttr(thumb)}" alt="${escapeAttr(getProjectDisplayName(project))}" />`
+              : `<div class="promo-card__icon">${String(index + 1).padStart(2, "0")}</div>`}
+            <strong>${escapeHtml(getProjectDisplayName(project))}</strong>
+            <span>${project.status === "published" ? "Publicado" : "Borrador"}</span>
+          </button>
+        </article>
+      `;
+    }).join("")
+    : `<div class="dashboard-empty">Esta empresa todavia no tiene promociones.</div>`;
+  els.clientProjectsList.querySelectorAll("[data-open-client-project]").forEach((button) => {
+    button.addEventListener("click", () => openProject(button.dataset.openClientProject));
+  });
+}
+
+function exportContactsCsv() {
+  const leads = [...db.leads]
+    .filter((lead) => !contactProjectFilter || String(lead.projectId || "") === contactProjectFilter)
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  if (!leads.length) {
+    window.alert("No hay contactos para exportar.");
+    return;
+  }
+  const rows = [
+    ["fecha", "promocion", "nombre", "email", "telefono", "mensaje"],
+    ...leads.map((lead) => [
+      formatShortDate(lead.createdAt),
+      lead.projectName || "",
+      lead.name || "",
+      lead.email || "",
+      lead.phone || "",
+      String(lead.message || "").replace(/\r?\n/g, " "),
+    ]),
+  ];
+  const csv = rows
+    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(";"))
+    .join("\n");
+  downloadFile(`contactos-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8", csv);
 }
 
 async function saveUserFromForm() {
@@ -2494,6 +2619,7 @@ function renderHomeDashboardV2() {
           return;
         }
         assignClientToState(button.dataset.clientCard);
+        currentView = "client";
         renderAll();
       });
     });
@@ -2872,6 +2998,8 @@ function normalizeState(c) {
         area:        String(f.area        || ""),
         bedrooms:    String(f.bedrooms    || ""),
         bathrooms:   String(f.bathrooms   || ""),
+        virtualTourUrl: String(f.virtualTourUrl || ""),
+        virtualTourCover: typeof f.virtualTourCover === "string" ? f.virtualTourCover : null,
         zones: Array.isArray(f.zones) && f.zones.length
           ? f.zones.map(z => ({ id: z.id || safeRandomUUID(), name: String(z.name || ""), images: Array.isArray(z.images) ? z.images.filter(Boolean).map(String) : [] }))
           // backward compat: old gallery → one zone
@@ -3143,6 +3271,8 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
           ).join("");
 
         const noImages = !floor.zones.some(z => z.images.length);
+        const floorTourUrl = floor.virtualTourUrl || "";
+        const floorTourCover = floor.virtualTourCover || "";
 
         const floorAnchorId = `tipologia-${idx + 1}`;
 
@@ -3161,6 +3291,14 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
             </div>` : ""}
             ${(floorTranslation.description || floor.description) ? `<p class="floor-body__desc">${escapeHtml(floorTranslation.description || floor.description)}</p>` : ""}
           </div>
+          ${floorTourUrl ? `
+          <a class="floor-tour-link" href="${escapeAttr(floorTourUrl)}" target="_blank" rel="noreferrer" data-track="tour">
+            ${floorTourCover ? `<img class="floor-tour-link__cover" src="${escapeAttr(floorTourCover)}" alt="${escapeAttr(`Tour ${floorTranslation.name || floor.name || "tipologia"}`)}" />` : ""}
+            <div class="floor-tour-link__body">
+              <span class="kicker">Tour virtual</span>
+              <strong>Ver esta tipologia</strong>
+            </div>
+          </a>` : ""}
           ${noImages ? "" : zonesHtml}
 
           ${floor.plan ? `
@@ -3256,6 +3394,7 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
 
   // ── WhatsApp float button
   const waFloat = whatsapp ? `<a class="wa-float" href="https://wa.me/${escapeAttr(whatsapp.replace(/\D/g,""))}" target="_blank" rel="noreferrer" aria-label="WhatsApp" data-track="whatsapp"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg></a>` : "";
+  const backToTopFloat = `<button class="site-back-to-top" type="button" aria-label="Subir arriba">↑</button>`;
   const floorsSection = `
   <section class="section" id="tipologias">
     <div class="shell">
@@ -3471,6 +3610,10 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
     .floor-gallery__item--hero img{min-height:320px;max-height:500px;}
     .floor-gallery--empty{grid-template-columns:1fr;padding:14px;}
     .floor-gallery__placeholder{display:grid;place-items:center;gap:10px;padding:50px 24px;border-radius:16px;background:rgba(26,22,17,.04);color:var(--muted);}
+    .floor-tour-link{margin:0 14px 18px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:14px 16px;border-radius:18px;border:1px solid var(--line);background:rgba(27,59,53,.06);color:var(--ink);}
+    .floor-tour-link__cover{width:88px;height:72px;object-fit:cover;border-radius:12px;border:1px solid var(--line);}
+    .floor-tour-link__body{display:grid;gap:6px;}
+    .floor-tour-link__body strong{font-size:.95rem;}
     .floor-plan{padding:6px 14px 18px;}
     .floor-plan__label{padding:12px 0 10px;border-top:1px solid var(--line);}
     .floor-plan__media{position:relative;display:grid;justify-items:center;gap:12px;}
@@ -3545,6 +3688,8 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
     /* ── WA FLOAT ───────────────────────────────────────────── */
     .wa-float{position:fixed;bottom:26px;right:26px;z-index:999;width:54px;height:54px;border-radius:999px;background:#25D366;color:#fff;display:grid;place-items:center;box-shadow:0 4px 20px rgba(37,211,102,.45);transition:transform .15s ease;}
     .wa-float:hover{transform:scale(1.08);}
+    .site-back-to-top{position:fixed;right:26px;bottom:92px;z-index:998;width:48px;height:48px;border:none;border-radius:999px;background:rgba(26,22,17,.84);color:#fff;display:grid;place-items:center;font:inherit;font-size:1.1rem;font-weight:800;box-shadow:0 14px 36px rgba(26,22,17,.22);opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .18s ease,transform .18s ease;}
+    .site-back-to-top.is-visible{opacity:1;pointer-events:auto;transform:translateY(0);}
 
     /* ── FOOTER ─────────────────────────────────────────────── */
     .footer{padding:0 0 36px;}
@@ -3597,15 +3742,19 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
       .floor-gallery{grid-template-columns:1fr;}
       .floor-gallery__item--hero{grid-column:auto;}
       .floor-body{padding:18px 18px 12px;}
+      .floor-tour-link{grid-template-columns:1fr;}
+      .floor-tour-link__cover{width:100%;height:180px;}
       .quality-list{grid-template-columns:1fr;}
       .quality-panel{padding:22px;}
       .footer__bar{flex-direction:column;align-items:flex-start;gap:10px;}
       .wa-float{bottom:16px;right:16px;}
+      .site-back-to-top{right:16px;bottom:82px;}
     }
   </style>
 </head>
 <body class="theme theme--${escapeAttr(designVariant)} hero--${escapeAttr(layout.hero)}">
   ${waFloat}
+  ${backToTopFloat}
 
   <section class="hero hero--${escapeAttr(layout.hero)}">
     <div class="shell">
@@ -3668,6 +3817,7 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
       var isPreview = ${previewMode ? "true" : "false"};
       var projectId = ${safeJsonEmbed(projectId)};
       var visitNode = document.getElementById('visit-counter');
+      var backToTopBtn = document.querySelector('.site-back-to-top');
       var localVisitKey = 'promoVisits:' + projectId;
       function setVisitCount(value){
         if(visitNode && isFinite(Number(value))) visitNode.textContent = String(Number(value));
@@ -3681,6 +3831,17 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
           }
           setVisitCount(currentVisits);
         } catch (e) {}
+      }
+      function syncBackToTop(){
+        if(!backToTopBtn) return;
+        backToTopBtn.classList.toggle('is-visible', window.scrollY > 520);
+      }
+      if(backToTopBtn){
+        backToTopBtn.addEventListener('click', function(){
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        window.addEventListener('scroll', syncBackToTop, { passive:true });
+        syncBackToTop();
       }
       function postJson(url, payload, keepalive){
         return fetch(url, {
@@ -3900,6 +4061,7 @@ function buildDesignedDossierHtml(s, { currentLanguage = "es", autoPrint = true 
             ${floor.bedrooms ? `<span>${escapeHtml(floor.bedrooms)} dorm.</span>` : ""}
             ${floor.bathrooms ? `<span>${escapeHtml(floor.bathrooms)} baños</span>` : ""}
           </div>
+          ${floor.virtualTourUrl ? `<a class="dossier-link-card" href="${escapeAttr(floor.virtualTourUrl)}" target="_blank" rel="noreferrer"><strong>${escapeHtml(copy.tourLabel)}</strong><span>${escapeHtml(floorTranslation.name || floor.name || `Tipologia ${index + 1}`)}</span></a>` : ""}
           ${floor.plan ? `<div class="dossier-plan"><img src="${escapeAttr(floor.plan)}" alt="${escapeAttr(`Plano ${floorTranslation.name || floor.name || ""}`)}" /></div>` : ""}
           ${zoneBlocks || `<div class="dossier-empty">Añade renders para esta tipologia.</div>`}
         </div>

@@ -32,22 +32,24 @@
 
 ## 4. Clientes y promociones
 
-- Mejorar la ficha de promotora.
+- Hecho: entrar a la empresa con un clic desde `Clientes / Promotoras`.
+- Hecho: listado rapido de promociones dentro de cada empresa.
+- Hecho: boton directo para crear una promocion desde la ficha de empresa.
 - Revisar orden, nombres y limpieza de clientes duplicados.
 - Añadir mas datos utiles de empresa si hacen falta.
 - Seguir puliendo la gestion de promociones desde admin.
 
 ## 5. Contactos y seguimiento
 
-- Revisar bien el listado de mensajes recibidos.
-- Mejorar lectura rapida de contactos.
-- Valorar filtros por promocion o fecha.
-- Valorar exportacion simple de contactos.
+- Hecho: listado de mensajes dentro del admin.
+- Hecho: filtro por promocion.
+- Hecho: exportacion simple de contactos a CSV.
+- Siguiente: valorar filtro por fecha o estado de respuesta.
 
 ## 6. Portada y presentacion
 
-- Seguir limpiando la portada.
-- Destacar mejor promociones importantes.
+- Hecho: portada mas limpia.
+- Hecho: bloque destacado para la promocion principal.
 - Mejorar imagenes, copies y jerarquia visual.
 - Revisar version movil en detalle.
 

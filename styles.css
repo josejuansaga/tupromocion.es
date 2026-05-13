@@ -192,6 +192,23 @@ select {
   gap: 18px;
 }
 
+.floating-top-btn {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 20;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(26, 22, 17, 0.86);
+  color: #fff;
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(26, 22, 17, 0.2);
+}
+
 .public-project-card,
 .security-panel {
   border: 1px solid var(--line);
@@ -506,6 +523,15 @@ select {
 .client-profile-card__actions {
   display: flex;
   gap: 8px;
+}
+
+.client-profile-card + .home-projects-panel {
+  margin-top: 18px;
+}
+
+.floor-tour-cover-wrap {
+  display: grid;
+  gap: 10px;
 }
 
 .client-profile-grid {
@@ -2120,9 +2146,32 @@ select:focus {
     padding-top: 12px;
   }
 
+  .promo-grid,
+  .client-cards-list,
+  .users-list {
+    grid-template-columns: 1fr;
+  }
+
+  .home-projects-filters,
+  .admin-sections-nav,
+  .home-clients-panel__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tab,
+  .home-projects-filter {
+    width: 100%;
+  }
+
   .shell {
     padding: 12px;
     gap: 12px;
+  }
+
+  .floating-top-btn {
+    right: 16px;
+    bottom: 16px;
   }
 
   .panel,
