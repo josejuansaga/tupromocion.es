@@ -3,9 +3,16 @@ ServerSignature Off
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Block access to storage except /storage/assets/
     RewriteCond %{REQUEST_URI} ^/storage/
     RewriteCond %{REQUEST_URI} !^/storage/assets/
     RewriteRule ^ - [F,L]
+
+    # Slug URLs: /empresa-ciudad → /index.html
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([a-z0-9][a-z0-9-]*)/?$ /index.html [L,QSA]
 </IfModule>
 
 # Cabeceras de seguridad

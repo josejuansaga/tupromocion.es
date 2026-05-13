@@ -5,10 +5,12 @@ function safeRandomUUID() {
   return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 11);
 }
 
-const PUBLIC_PROJECT_ID = new URLSearchParams(window.location.search).get("promo") || "";
-const PUBLIC_LANGUAGE = new URLSearchParams(window.location.search).get("lang") || "es";
 const IS_ADMIN_ROUTE = /\/admin(?:\/|\/index\.(?:html|php))?$/i.test(window.location.pathname);
-const IS_PUBLIC_HOME_ROUTE = !IS_ADMIN_ROUTE && !PUBLIC_PROJECT_ID;
+const PUBLIC_PROJECT_ID = new URLSearchParams(window.location.search).get("promo") || "";
+const _pathSlugMatch = !IS_ADMIN_ROUTE && window.location.pathname.match(/^\/([a-z0-9][a-z0-9-]+)\/?$/);
+const PUBLIC_PROJECT_SLUG = _pathSlugMatch ? _pathSlugMatch[1] : "";
+const PUBLIC_LANGUAGE = new URLSearchParams(window.location.search).get("lang") || "es";
+const IS_PUBLIC_HOME_ROUTE = !IS_ADMIN_ROUTE && !PUBLIC_PROJECT_ID && !PUBLIC_PROJECT_SLUG;
 
 function createDefaultTranslation() {
   return {
@@ -36,6 +38,7 @@ const defaultState = {
   projectId: "",
   projectName: "",
   projectStatus: "draft",
+  slug: "",
   clientId: "",
   designVariant: "mediterranea",
   companyName: "Residencial Atlas",
@@ -124,6 +127,7 @@ const els = {
   editorProjectMeta: document.querySelector("#editorProjectMeta"),
   saveStatusPill:    document.querySelector("#saveStatusPill"),
   saveDraftBtn:     document.querySelector("#saveDraftBtn"),
+  previewDraftBtn:  document.querySelector("#previewDraftBtn"),
   publishProjectBtn: document.querySelector("#publishProjectBtn"),
   backToDashboardBtn: document.querySelector("#backToDashboardBtn"),
   backFromClientBtn: document.querySelector("#backFromClientBtn"),
@@ -225,8 +229,8 @@ init();
 // ─── init ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  if (PUBLIC_PROJECT_ID) {
-    await renderPublicProjectFromUrl(PUBLIC_PROJECT_ID);
+  if (PUBLIC_PROJECT_ID || PUBLIC_PROJECT_SLUG) {
+    await renderPublicProjectFromUrl(PUBLIC_PROJECT_ID, PUBLIC_PROJECT_SLUG);
     return;
   }
   if (IS_PUBLIC_HOME_ROUTE) {
@@ -448,6 +452,7 @@ function bindTopLevel() {
     renderAll();
   });
   els.saveDraftBtn?.addEventListener("click", () => saveProjectRecord());
+  els.previewDraftBtn?.addEventListener("click", () => openPublishedProjectWindow(state));
   els.publishProjectBtn?.addEventListener("click", () => openProjectLink());
   els.createProjectBackupBtn?.addEventListener("click", () => { void createEntityBackup("project", state.projectId); });
   els.backFromClientBtn?.addEventListener("click", () => {
@@ -540,10 +545,18 @@ function renderAll() {
   els.projectName.value     = state.projectName;
   els.projectStatus.value   = state.projectStatus;
   if (els.editorProjectMeta) {
-    els.editorProjectMeta.textContent = getProjectDisplayName(state);
+    const m = getProjectMetrics(state.projectId);
+    const parts = [
+      `${m.pageview} visitas`,
+      m.contactForm ? `${m.contactForm} contactos` : null,
+      m.whatsapp ? `${m.whatsapp} WhatsApp` : null,
+      m.pdf ? `${m.pdf} PDF` : null,
+      m.tour ? `${m.tour} tour` : null,
+    ].filter(Boolean);
+    els.editorProjectMeta.textContent = parts.length ? parts.join(" · ") : getProjectDisplayName(state);
   }
   if (els.publishProjectBtn) {
-    els.publishProjectBtn.textContent = state.projectStatus === "published" ? "Ver publicada" : "Publicar";
+    els.publishProjectBtn.textContent = (state.projectStatus === "published" || state.projectStatus === "unlisted") ? "Ver publicada" : "Publicar";
   }
   els.designVariant.value    = state.designVariant;
   els.companyName.value     = state.companyName;
@@ -709,9 +722,10 @@ async function refreshDatabaseFromServer() {
   return true;
 }
 
-async function renderPublicProjectFromUrl(projectId) {
+async function renderPublicProjectFromUrl(projectId, slug) {
   try {
-    const response = await fetch(`${API_BASE}/public_project.php?id=${encodeURIComponent(projectId)}`, { credentials: "same-origin" });
+    const param = projectId ? `id=${encodeURIComponent(projectId)}` : `slug=${encodeURIComponent(slug)}`;
+    const response = await fetch(`${API_BASE}/public_project.php?${param}`, { credentials: "same-origin" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.ok === false || !payload.data?.project?.state) {
       document.body.innerHTML = `<main style="padding:40px;font-family:Inter,Arial,sans-serif"><h1>Promocion no encontrada</h1><p>El enlace no es valido o ya no existe.</p></main>`;
@@ -807,7 +821,7 @@ function renderPublicCatalog() {
     const location = [city, province].filter(Boolean).join(", ");
     return `
       <article class="public-project-card">
-        <a class="public-project-card__media" href="${escapeAttr(getProjectPublicUrl(project.id))}">
+        <a class="public-project-card__media" href="${escapeAttr(getPublicCatalogUrl(project))}">
           ${cover
             ? `<img src="${escapeAttr(cover)}" alt="${escapeAttr(project.name || "Promocion")}" />`
             : `<div class="public-project-card__placeholder">${String(index + 1).padStart(2, "0")}</div>`}
@@ -820,7 +834,7 @@ function renderPublicCatalog() {
           <p>${escapeHtml(project?.state?.headline || "Promocion inmobiliaria publicada")}</p>
           <div class="public-project-card__footer">
             <strong>${escapeHtml(companyName || "Tupromocion.es")}</strong>
-            <a class="primary-btn primary-btn--compact" href="${escapeAttr(getProjectPublicUrl(project.id))}">Ver promocion</a>
+            <a class="primary-btn primary-btn--compact" href="${escapeAttr(getPublicCatalogUrl(project))}">Ver promocion</a>
           </div>
         </div>
       </article>
@@ -1344,6 +1358,39 @@ function buildZoneCard(zone, floor) {
     renderAll();
   });
 
+  // Drag & drop reorder
+  let _dragIdx = -1;
+  dropNode.addEventListener("dragstart", (e) => {
+    const item = e.target.closest("[data-drag-index]");
+    if (!item) return;
+    _dragIdx = Number(item.dataset.dragIndex);
+    item.classList.add("thumb-item--dragging");
+  });
+  dropNode.addEventListener("dragend", (e) => {
+    const item = e.target.closest("[data-drag-index]");
+    if (item) item.classList.remove("thumb-item--dragging");
+    dropNode.querySelectorAll(".thumb-item--dragover").forEach(el => el.classList.remove("thumb-item--dragover"));
+  });
+  dropNode.addEventListener("dragover", (e) => {
+    const item = e.target.closest("[data-drag-index]");
+    if (!item || _dragIdx < 0) return;
+    e.preventDefault();
+    dropNode.querySelectorAll(".thumb-item--dragover").forEach(el => el.classList.remove("thumb-item--dragover"));
+    item.classList.add("thumb-item--dragover");
+  });
+  dropNode.addEventListener("drop", (e) => {
+    const item = e.target.closest("[data-drag-index]");
+    if (!item || _dragIdx < 0) return;
+    e.preventDefault();
+    const targetIdx = Number(item.dataset.dragIndex);
+    if (targetIdx !== _dragIdx) {
+      const moved = zone.images.splice(_dragIdx, 1)[0];
+      zone.images.splice(targetIdx, 0, moved);
+      renderAll();
+    }
+    _dragIdx = -1;
+  });
+
   return div;
 }
 
@@ -1633,7 +1680,7 @@ function splitLines(text) { return text.split("\n").map(s => s.trim()).filter(Bo
 
 function renderThumbList(images, alt, { reorderable = false } = {}) {
   return `<div class="thumb-list">${images.map((img, index) => `
-    <div class="thumb-item">
+    <div class="thumb-item" ${reorderable ? `draggable="true" data-drag-index="${index}"` : ""}>
       <img class="thumb" src="${escapeAttr(img)}" alt="${escapeAttr(`${alt} ${index + 1}`)}" />
       ${reorderable ? `
         <div class="thumb-actions">
@@ -1894,11 +1941,30 @@ function openPublishedProjectWindow(projectState) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+function getPublicCatalogUrl(catalogProject) {
+  const slug = catalogProject?.state?.slug || catalogProject?.slug || "";
+  const url = new URL("./", window.location.href);
+  url.search = "";
+  url.hash = "";
+  if (slug) {
+    url.pathname = url.pathname.replace(/\/?$/, "") + "/" + slug;
+  } else {
+    url.searchParams.set("promo", catalogProject?.id || "");
+  }
+  return url.toString();
+}
+
 function getProjectPublicUrl(projectId) {
+  const project = getProjectById(projectId);
+  const slug = project?.state?.slug || project?.slug || "";
   const url = new URL(IS_ADMIN_ROUTE ? "../" : "./", window.location.href);
   url.search = "";
   url.hash = "";
-  url.searchParams.set("promo", projectId);
+  if (slug) {
+    url.pathname = url.pathname.replace(/\/?$/, "") + "/" + slug;
+  } else {
+    url.searchParams.set("promo", projectId);
+  }
   return url.toString();
 }
 
@@ -2040,6 +2106,7 @@ function openProject(projectId) {
   state.projectId = project.id;
   state.projectName = project.name || state.projectName;
   state.projectStatus = project.status || "draft";
+  state.slug = project.state?.slug || project.slug || state.slug;
   state.clientId = project.clientId || state.clientId;
   currentView = "editor";
   rememberSavedSnapshot(state);
@@ -2366,7 +2433,7 @@ function renderClientProjectsPanel() {
               ? `<img class="promo-card__thumb" src="${escapeAttr(thumb)}" alt="${escapeAttr(getProjectDisplayName(project))}" />`
               : `<div class="promo-card__icon">${String(index + 1).padStart(2, "0")}</div>`}
             <strong>${escapeHtml(getProjectDisplayName(project))}</strong>
-            <span>${project.status === "published" ? "Publicado" : "Borrador"}</span>
+            <span>${project.status === "published" ? "Publicado" : project.status === "unlisted" ? "Oculto" : "Borrador"}</span>
           </button>
         </article>
       `;
@@ -2470,7 +2537,7 @@ function renderDashboard() {
       <article class="dashboard-project-card">
         <div class="dashboard-project-card__top">
           <strong>${escapeHtml(getProjectDisplayName(project))}</strong>
-          <span class="status-badge status-badge--${escapeAttr(project.status || "draft")}">${project.status === "published" ? "Publicado" : "Borrador"}</span>
+          <span class="status-badge status-badge--${escapeAttr(project.status || "draft")}">${project.status === "published" ? "Publicado" : project.status === "unlisted" ? "Oculto" : "Borrador"}</span>
         </div>
         <p>${escapeHtml(client?.name || "Sin cliente")} · ${metrics.pageview} visitas · ${metrics.contactForm} contactos</p>
         <button class="secondary-btn secondary-btn--compact" type="button" data-open-project="${escapeAttr(project.id)}">Abrir</button>
@@ -2540,7 +2607,7 @@ function renderDashboardAdmin() {
               <strong>${escapeHtml(getProjectDisplayName(project))}</strong>
               <span>${escapeHtml(client?.name || "Sin cliente")}</span>
             </div>
-            <span class="status-badge status-badge--${escapeAttr(project.status || "draft")}">${project.status === "published" ? "Publicado" : "Borrador"}</span>
+            <span class="status-badge status-badge--${escapeAttr(project.status || "draft")}">${project.status === "published" ? "Publicado" : project.status === "unlisted" ? "Oculto" : "Borrador"}</span>
             <span class="dashboard-row__visits">${metrics.pageview}</span>
             <span class="dashboard-row__date">${formatShortDate(project.updatedAt)}</span>
             <div class="dashboard-row__actions">
@@ -2691,12 +2758,12 @@ function enhanceDashboardProjectCards() {
 
     const main = card.querySelector(".promo-card__main");
     if (main && !main.querySelector(".promo-card__badge")) {
-      main.insertAdjacentHTML("afterbegin", `<span class="status-badge status-badge--${escapeAttr(project.status || "draft")} promo-card__badge">${project.status === "published" ? "Publicado" : "Borrador"}</span>`);
+      main.insertAdjacentHTML("afterbegin", `<span class="status-badge status-badge--${escapeAttr(project.status || "draft")} promo-card__badge">${project.status === "published" ? "Publicado" : project.status === "unlisted" ? "Oculto" : "Borrador"}</span>`);
     }
 
     const actions = card.querySelector(".promo-card__actions");
     if (actions && !actions.querySelector("[data-toggle-project-status]")) {
-      actions.insertAdjacentHTML("afterbegin", `<button class="promo-mini-btn promo-mini-btn--accent" type="button" data-toggle-project-status="${escapeAttr(project.id)}" data-next-status="${project.status === "published" ? "draft" : "published"}">${project.status === "published" ? "Pasar a borrador" : "Publicar"}</button>`);
+      actions.insertAdjacentHTML("afterbegin", `<button class="promo-mini-btn promo-mini-btn--accent" type="button" data-toggle-project-status="${escapeAttr(project.id)}" data-next-status="${project.status === "published" ? "draft" : "published"}">${project.status === "published" || project.status === "unlisted" ? "Pasar a borrador" : "Publicar"}</button>`);
     }
   });
 
@@ -2958,7 +3025,8 @@ function normalizeState(c) {
   const n = structuredClone(defaultState);
   n.projectId        = String(c.projectId || "");
   n.projectName      = String(c.projectName || n.projectName);
-  n.projectStatus    = c.projectStatus === "published" ? "published" : "draft";
+  n.projectStatus    = ["published", "unlisted"].includes(c.projectStatus) ? c.projectStatus : "draft";
+  n.slug             = String(c.slug || "");
   n.clientId         = String(c.clientId || "");
   n.designVariant    = resolveDesignVariantKey(c.designVariant);
   n.companyName     = String(c.companyName    || n.companyName);

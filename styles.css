@@ -1145,6 +1145,11 @@ select:focus {
   background: rgba(36, 145, 86, 0.12);
 }
 
+.status-badge--unlisted {
+  color: #5B4FBB;
+  background: rgba(91, 79, 187, 0.1);
+}
+
 /* ─── dropzones ──────────────────────────────────────────── */
 
 .drop-group {
@@ -1264,6 +1269,16 @@ select:focus {
   display: grid;
   gap: 6px;
   justify-items: center;
+  cursor: grab;
+}
+
+.thumb-item--dragging {
+  opacity: 0.4;
+}
+
+.thumb-item--dragover {
+  outline: 2px dashed var(--accent);
+  border-radius: 6px;
 }
 
 .thumb-actions {
@@ -2088,6 +2103,11 @@ select:focus {
 .workspace-dashboard .status-badge--published {
   color: #111111;
   background: #D7FF00;
+}
+
+.workspace-dashboard .status-badge--unlisted {
+  color: #C0B4FF;
+  background: #2A2240;
 }
 
 /* ─── responsive ─────────────────────────────────────────── */

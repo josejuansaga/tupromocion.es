@@ -524,6 +524,7 @@ function webinmo_public_projects(): array {
                 'city' => (string) ($state['city'] ?? ''),
                 'cover' => (string) ($state['cover'] ?? ''),
                 'logo' => (string) ($state['logo'] ?? ''),
+                'slug' => (string) ($state['slug'] ?? ''),
             ],
         ];
     }, $projects);
@@ -804,6 +805,20 @@ function webinmo_upsert_project(array $project): array {
     if (!webinmo_can_access_project($project)) {
         return ['ok' => false, 'error' => 'No tienes permisos para guardar esta promocion.'];
     }
+    // Auto-generate slug if missing
+    $state = is_array($project['state'] ?? null) ? $project['state'] : [];
+    $currentSlug = (string) ($state['slug'] ?? '');
+    if ($currentSlug === '') {
+        $rawSlug = webinmo_generate_slug_raw(
+            (string) ($state['companyName'] ?? ''),
+            (string) ($state['locationName'] ?? '')
+        );
+        $currentSlug = webinmo_ensure_unique_slug($rawSlug, $projectId);
+        if (isset($project['state']) && is_array($project['state'])) {
+            $project['state']['slug'] = $currentSlug;
+        }
+    }
+
     $path = webinmo_project_path($projectId);
     if (!webinmo_write_json($path, $project)) {
         return ['ok' => false, 'error' => 'No se ha podido guardar el archivo de la promocion.'];
@@ -817,6 +832,7 @@ function webinmo_upsert_project(array $project): array {
         'clientId' => (string) ($project['clientId'] ?? ''),
         'name' => (string) ($project['name'] ?? 'Promocion sin nombre'),
         'status' => (string) ($project['status'] ?? 'draft'),
+        'slug' => $currentSlug,
         'updatedAt' => (string) ($project['updatedAt'] ?? date(DATE_ATOM)),
         'createdAt' => (string) ($project['createdAt'] ?? date(DATE_ATOM)),
     ];
@@ -1003,14 +1019,51 @@ function webinmo_store_asset(string $projectId, string $hint, string $dataUrl): 
         return ['ok' => false, 'error' => 'No se ha podido guardar el archivo.'];
     }
 
+    // Convert JPEG to WebP for better compression
+    if (in_array($mime, ['image/jpeg', 'image/jpg'], true) && function_exists('imagewebp')) {
+        $src = @imagecreatefromjpeg($path);
+        if ($src) {
+            $wbpFilename = $safeHint . '-' . $hash . '.webp';
+            $wbpPath = $dir . '/' . $wbpFilename;
+            if (@imagewebp($src, $wbpPath, 82)) {
+                @unlink($path);
+                $filename = $wbpFilename;
+                $path = $wbpPath;
+                $ext = 'webp';
+                $mime = 'image/webp';
+            }
+            imagedestroy($src);
+        }
+    }
+
     $safeProjectId = preg_replace('/[^a-zA-Z0-9_-]/', '', $projectId);
     $relPath = './storage/assets/' . $safeProjectId . '/' . $filename;
 
-    // Generar miniatura para imágenes (no PDF ni SVG)
+    // Generate thumbnail for images
+    $thumbPath = null;
     if (in_array($ext, ['jpg', 'png', 'webp'], true) && function_exists('imagecreatefromjpeg')) {
         $thumbFilename = $safeHint . '-' . $hash . '-thumb.jpg';
         $thumbPath = $dir . '/' . $thumbFilename;
         webinmo_generate_thumb($path, $thumbPath, $mime, 480);
+    }
+
+    // Apply watermark for non-logo images
+    if (in_array($ext, ['webp', 'jpg', 'jpeg'], true)
+        && !str_starts_with($safeHint, 'logo')
+        && function_exists('imagecreatefrompng')
+    ) {
+        $project = webinmo_load_project($projectId);
+        $logoRel = (string) ($project['state']['logo'] ?? '');
+        if ($logoRel !== '') {
+            $logoAbs = realpath(__DIR__ . '/../' . ltrim(str_replace('./', '', $logoRel), '/')) ?: '';
+            if ($logoAbs !== '' && file_exists($logoAbs) && str_ends_with(strtolower($logoAbs), '.png')) {
+                webinmo_apply_watermark($path, $logoAbs, 55, 20, 24);
+                if ($thumbPath !== null && file_exists($thumbPath)) {
+                    @unlink($thumbPath);
+                    webinmo_generate_thumb($path, $thumbPath, $mime, 480);
+                }
+            }
+        }
     }
 
     return ['ok' => true, 'path' => $relPath];
@@ -1038,4 +1091,79 @@ function webinmo_generate_thumb(string $src, string $dst, string $mime, int $max
     imagejpeg($thumb, $dst, 78);
     imagedestroy($img);
     imagedestroy($thumb);
+}
+
+function webinmo_slugify(string $text): string {
+    $text = mb_strtolower($text, 'UTF-8');
+    $from = ['á','é','í','ó','ú','ü','ñ','à','è','ì','ò','ù','â','ê','î','ô','û','ä','ë','ï','ö','ç'];
+    $to   = ['a','e','i','o','u','u','n','a','e','i','o','u','a','e','i','o','u','a','e','i','o','c'];
+    $text = str_replace($from, $to, $text);
+    $text = preg_replace('/[^a-z0-9]+/', '-', $text);
+    return trim($text, '-');
+}
+
+function webinmo_generate_slug_raw(string $companyName, string $locationName): string {
+    $company = webinmo_slugify($companyName);
+    $parts = array_filter(array_map('trim', explode(',', $locationName)));
+    $city = $parts ? webinmo_slugify((string) end($parts)) : '';
+    $slug = implode('-', array_filter([$company, $city]));
+    return $slug ?: 'promo';
+}
+
+function webinmo_ensure_unique_slug(string $base, string $currentProjectId): string {
+    $index = webinmo_load_project_index();
+    $used = [];
+    foreach ($index as $meta) {
+        if (($meta['id'] ?? '') !== $currentProjectId && !empty($meta['slug'])) {
+            $used[] = $meta['slug'];
+        }
+    }
+    if (!in_array($base, $used, true)) return $base;
+    for ($i = 2; $i < 100; $i++) {
+        $candidate = $base . '-' . $i;
+        if (!in_array($candidate, $used, true)) return $candidate;
+    }
+    return $base . '-' . uniqid();
+}
+
+function webinmo_apply_watermark(string $imgPath, string $wmPath, int $opacity, int $wmPercent, int $margin): bool {
+    $ext = strtolower(pathinfo($imgPath, PATHINFO_EXTENSION));
+    $img = match ($ext) {
+        'jpg', 'jpeg' => @imagecreatefromjpeg($imgPath),
+        'webp'        => @imagecreatefromwebp($imgPath),
+        'png'         => @imagecreatefrompng($imgPath),
+        default       => false,
+    };
+    $wm = @imagecreatefrompng($wmPath);
+    if (!$img || !$wm) { if ($img) imagedestroy($img); return false; }
+
+    $imgW = imagesx($img); $imgH = imagesy($img);
+    $wmW  = imagesx($wm);  $wmH  = imagesy($wm);
+    $targetW = (int) round($imgW * $wmPercent / 100);
+    $targetH = (int) round($wmH * $targetW / $wmW);
+
+    $wmScaled = imagecreatetruecolor($targetW, $targetH);
+    imagealphablending($wmScaled, false);
+    imagesavealpha($wmScaled, true);
+    imagefill($wmScaled, 0, 0, imagecolorallocatealpha($wmScaled, 0, 0, 0, 127));
+    imagecopyresampled($wmScaled, $wm, 0, 0, 0, 0, $targetW, $targetH, $wmW, $wmH);
+    imagedestroy($wm);
+
+    $dstX = $imgW - $targetW - $margin;
+    $dstY = $imgH - $targetH - $margin;
+    $cut  = imagecreatetruecolor($targetW, $targetH);
+    imagecopy($cut, $img, 0, 0, $dstX, $dstY, $targetW, $targetH);
+    imagealphablending($cut, true);
+    imagecopy($cut, $wmScaled, 0, 0, 0, 0, $targetW, $targetH);
+    imagecopymerge($img, $cut, $dstX, $dstY, 0, 0, $targetW, $targetH, $opacity);
+    imagedestroy($wmScaled);
+    imagedestroy($cut);
+
+    $result = match ($ext) {
+        'webp' => imagewebp($img, $imgPath, 82),
+        'png'  => imagepng($img, $imgPath),
+        default => imagejpeg($img, $imgPath, 90),
+    };
+    imagedestroy($img);
+    return (bool) $result;
 }

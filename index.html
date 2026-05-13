@@ -20,14 +20,6 @@
       </header>
 
       <div class="public-filterbar">
-        <label class="public-filterbar__field">
-          <span>Provincia</span>
-          <select id="publicProvinceFilter"></select>
-        </label>
-        <label class="public-filterbar__field">
-          <span>Población</span>
-          <select id="publicCityFilter"></select>
-        </label>
         <p id="publicResultsCount" class="public-results-count">0 proyectos</p>
       </div>
 
@@ -217,6 +209,7 @@
               <span>Estado</span>
               <select id="projectStatus">
                 <option value="draft">Borrador</option>
+                <option value="unlisted">Oculto (con enlace)</option>
                 <option value="published">Publicado</option>
               </select>
             </label>
@@ -606,6 +599,7 @@
           <div class="preview-topbar__actions">
             <span id="saveStatusPill" class="save-status-pill">Edicion abierta</span>
             <button id="saveDraftBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar</button>
+            <button id="previewDraftBtn" class="secondary-btn secondary-btn--compact" type="button">Vista previa</button>
             <button id="publishProjectBtn" class="primary-btn primary-btn--compact" type="button">Enlace</button>
             <button id="backToDashboardBtn" class="secondary-btn secondary-btn--compact" type="button">Volver al dashboard</button>
             <p class="preview-note">Se actualiza en tiempo real mientras editas.</p>
