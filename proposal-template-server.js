@@ -66,7 +66,7 @@ function renderRespondButtons(data) {
   const status = String(data.status || "draft");
 
   if (status === "accepted") {
-    const when = data.respondedAt ? ` el ${formatProposalDate(data.respondedAt)}` : "";
+    const when = data.respondedAt ? `el ${formatProposalDate(data.respondedAt)}` : "";
     return `
       <div class="proposal-responded-state proposal-responded-state--accepted">
         <span class="proposal-responded-icon">✓</span>
@@ -78,13 +78,14 @@ function renderRespondButtons(data) {
   }
 
   if (status === "rejected") {
-    const when = data.respondedAt ? ` el ${formatProposalDate(data.respondedAt)}` : "";
+    const when    = data.respondedAt ? `el ${formatProposalDate(data.respondedAt)}` : "";
+    const msg     = String(data.respondedMessage || "").trim();
     return `
       <div class="proposal-responded-state proposal-responded-state--rejected">
         <span class="proposal-responded-icon">✗</span>
         <div>
-          <strong>Propuesta rechazada</strong>
-          ${when ? `<small>${when}</small>` : ""}
+          <strong>Respuesta enviada${when ? ` ${when}` : ""}</strong>
+          ${msg ? `<em class="proposal-responded-message">${escapeHtml(msg)}</em>` : "<small>Nos pondremos en contacto contigo.</small>"}
         </div>
       </div>`;
   }
@@ -476,60 +477,110 @@ async function resolveProposalData() {
 }
 
 /**
- * Conecta los botones de aceptar / rechazar con el endpoint /api/proposal_respond.php
+ * Genera el formulario inline que aparece al pulsar "No acepto / Necesito cambios".
+ * Permite al cliente escribir un mensaje antes de confirmar el rechazo.
+ */
+function renderRejectionForm() {
+  return `
+    <div class="proposal-rejection-form" data-proposal-respond-zone>
+      <p class="proposal-rejection-form__label">
+        ¿Qué necesitas cambiar o por qué no lo aceptas?
+        <span class="proposal-rejection-form__optional">(opcional)</span>
+      </p>
+      <textarea
+        class="proposal-rejection-form__textarea"
+        id="proposal-rejection-message"
+        placeholder="Ej: El precio está fuera de mi presupuesto, necesito ajustar el alcance del proyecto…"
+        rows="3"
+        maxlength="600"
+      ></textarea>
+      <div class="proposal-rejection-form__actions">
+        <button class="site-btn site-btn--ghost proposal-reject-btn" type="button" data-proposal-confirm-reject>
+          Enviar respuesta
+        </button>
+        <button class="site-btn site-btn--ghost-light proposal-cancel-reject-btn" type="button" data-proposal-cancel-reject>
+          Cancelar
+        </button>
+      </div>
+    </div>`;
+}
+
+/**
+ * Conecta los botones de aceptar / rechazar con el endpoint /api/proposal_respond.php.
+ * — Aceptar: envía directamente sin diálogos.
+ * — Rechazar: despliega un formulario inline para escribir un mensaje opcional.
  */
 function wireProposalRespond(data) {
   const slug = window.PROPOSAL_PUBLIC_SLUG || "";
   if (!slug) return;
 
-  function replaceRespondZones(freshData) {
+  /* Reemplaza todas las zonas de respuesta con el nuevo HTML */
+  function replaceZones(html) {
     document.querySelectorAll("[data-proposal-respond-zone]").forEach((zone) => {
       const tmp = document.createElement("div");
-      tmp.innerHTML = renderRespondButtons(freshData);
+      tmp.innerHTML = html;
       zone.replaceWith(tmp.firstElementChild || tmp);
     });
   }
 
-  document.querySelectorAll("[data-proposal-respond-action]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const action = button.dataset.proposalRespondAction;
-      const verb   = action === "accepted" ? "aceptar" : "rechazar";
-      if (!window.confirm(`¿Seguro que quieres ${verb} esta propuesta?`)) return;
+  /* Envía la respuesta a la API y actualiza la UI */
+  async function sendResponse(action, message = "") {
+    // Deshabilitar todos los botones en curso
+    document.querySelectorAll(
+      "[data-proposal-respond-action], [data-proposal-confirm-reject], [data-proposal-cancel-reject]"
+    ).forEach((b) => { b.disabled = true; });
+    const sendBtn = document.querySelector("[data-proposal-confirm-reject]");
+    if (sendBtn) sendBtn.textContent = "Enviando…";
 
-      // Deshabilitar todos los botones mientras se procesa
-      document.querySelectorAll("[data-proposal-respond-action]").forEach((b) => {
-        b.disabled  = true;
-        b.textContent = "Enviando…";
+    try {
+      const res    = await fetch("/api/proposal_respond.php", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ slug, action, message }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!result.ok && !result.alreadyResponded) throw new Error(result.error || "Error desconocido");
+
+      const freshData = {
+        ...data,
+        status:           result.status || action,
+        respondedAt:      result.respondedAt || new Date().toISOString(),
+        respondedMessage: message || undefined,
+      };
+      replaceZones(renderRespondButtons(freshData));
+    } catch {
+      window.alert("No se ha podido registrar la respuesta. Por favor contacta directamente.");
+      // Restaurar botones originales
+      replaceZones(renderRespondButtons(data));
+      wireProposalRespond(data);
+    }
+  }
+
+  /* Botones principales: Aceptar / No acepto */
+  document.querySelectorAll("[data-proposal-respond-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.proposalRespondAction;
+
+      if (action === "accepted") {
+        // Aceptar: envío directo, sin formulario
+        void sendResponse("accepted");
+        return;
+      }
+
+      // Rechazar: mostrar formulario inline en todas las zonas
+      replaceZones(renderRejectionForm());
+
+      /* Botón "Enviar respuesta" dentro del formulario */
+      document.querySelector("[data-proposal-confirm-reject]")?.addEventListener("click", () => {
+        const msg = (document.querySelector("#proposal-rejection-message")?.value || "").trim();
+        void sendResponse("rejected", msg);
       });
 
-      try {
-        const res    = await fetch("/api/proposal_respond.php", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ slug, action }),
-        });
-        const result = await res.json().catch(() => ({}));
-
-        if (!result.ok && !result.alreadyResponded) {
-          throw new Error(result.error || "Error desconocido");
-        }
-
-        // Construir estado local para no recargar página
-        const freshData = {
-          ...data,
-          status:      result.status || action,
-          respondedAt: result.respondedAt || new Date().toISOString(),
-        };
-        replaceRespondZones(freshData);
-      } catch {
-        window.alert("No se ha podido registrar la respuesta. Por favor contacta directamente.");
-        document.querySelectorAll("[data-proposal-respond-action]").forEach((b) => {
-          b.disabled    = false;
-          b.textContent = b.dataset.proposalRespondAction === "accepted"
-            ? (data.acceptLabel || "Aceptar propuesta")
-            : "No acepto / Necesito cambios";
-        });
-      }
+      /* Botón "Cancelar" — restaura los botones originales */
+      document.querySelector("[data-proposal-cancel-reject]")?.addEventListener("click", () => {
+        replaceZones(renderRespondButtons(data));
+        wireProposalRespond(data);
+      });
     });
   });
 }
