@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260514d" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png?v=20260514d" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/favicon-192.png?v=20260514d" />
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=20260514d" />
+    <title>TuPromoción.es — Fichas digitales y servicios 3D para promociones</title>
+    <meta
+      name="description"
+      content="Renders, planos y ficha digital para vender mejor tu promoción. Una herramienta comercial de Tu Casa en 3D lista para compartir."
+    />
+    <meta property="og:title" content="TuPromoción.es — Fichas digitales y servicios 3D" />
+    <meta
+      property="og:description"
+      content="Convertimos renders, planos y vídeos en una ficha online profesional, lista para compartir por WhatsApp, email o campañas."
+    />
+    <meta property="og:image" content="https://tupromocion.es/img/tupromocion-logo.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tupromocion.es/" />
+    <link rel="canonical" href="https://tupromocion.es/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TuPromoción.es — Fichas digitales y servicios 3D" />
+    <meta name="twitter:description" content="Convertimos renders, planos y vídeos en una ficha online profesional, lista para compartir por WhatsApp, email o campañas." />
+    <meta name="twitter:image" content="https://tupromocion.es/img/tupromocion-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css?v=20260514k" />
+    <script src="/lib/jszip.min.js?v=20260514c"></script>
+    <script src="/site-variants.js?v=20260514c"></script>
+  </head>
+  <body>
+    <section id="publicWorkspace" class="public-shell" hidden>
+      <nav class="site-nav">
+        <a class="site-nav__logo" href="/">
+          <img src="/img/tupromocion-logo.png" alt="TuPromoción.es by Tu Casa en 3D" height="40" />
+        </a>
+        <div class="site-nav__links">
+          <a href="/publica-tu-promocion">Para promotoras</a>
+          <a href="/interioristas">Interioristas</a>
+          <a href="#nosotros">Quiénes somos</a>
+          <a href="#precios">Precios</a>
+          <a href="#beneficios">Beneficios</a>
+          <a href="#como-funciona">Cómo funciona</a>
+          <a
+            class="site-nav__cta"
+            href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromoci%C3%B3n.es.%20Quiero%20informaci%C3%B3n%20sobre%20una%20ficha%20digital%20para%20una%20promoci%C3%B3n."
+            target="_blank"
+            rel="noopener"
+            >Solicitar presupuesto 3D</a
+          >
+        </div>
+      </nav>
+
+      <header class="site-hero">
+        <div class="site-hero__inner">
+          <p class="site-eyebrow">TuPromoción.es by Tu Casa en 3D</p>
+          <span class="site-hero__pill">Ficha digital incluida con tu proyecto 3D</span>
+          <h1 class="site-hero__title">Renders, planos y ficha digital para vender mejor tu promoción.</h1>
+          <p class="site-hero__lead">
+            En <strong>Tu Casa en 3D</strong> creamos el material visual de tu promoción y lo convertimos en una
+            ficha online profesional, lista para enviar por WhatsApp, email o campañas comerciales.
+          </p>
+          <div class="site-hero__highlights">
+            <span>Servicios 3D profesionales</span>
+            <span>Ficha digital incluida como bonus</span>
+            <span>Enlace comercial listo para compartir</span>
+          </div>
+          <div class="site-hero__ctas">
+            <a
+              class="site-btn site-btn--primary"
+              href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromoci%C3%B3n.es.%20Quiero%20informaci%C3%B3n%20sobre%20una%20ficha%20digital%20para%20una%20promoci%C3%B3n."
+              target="_blank"
+              rel="noopener"
+              >Solicitar presupuesto 3D</a
+            >
+            <a class="site-btn site-btn--ghost" href="/ficha-demo">Ver ejemplo de ficha digital</a>
+          </div>
+          <div class="site-hero__microcopy">
+            <strong>Ideal para:</strong> promotoras, agencias, inmobiliarias e interioristas que quieren presentar
+            mejor su material visual.
+          </div>
+        </div>
+        <div class="site-hero__visual">
+          <img
+            src="https://tucasaen3d.es/wp-content/uploads/2021/08/Drone-6.jpg"
+            alt="Render 3D exterior de promoción"
+            loading="eager"
+          />
+        </div>
+      </header>
+
+      <section id="promociones" class="catalog-section">
+        <div class="catalog-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Proyectos publicados</p>
+          <h2 class="catalog-section__title">Promociones activas</h2>
+          <div class="public-filterbar">
+            <p id="publicResultsCount" class="public-results-count">0 proyectos</p>
+          </div>
+          <section id="publicProjectsGrid" class="public-projects-grid"></section>
+        </div>
+      </section>
+
+      <section id="nosotros" class="about-section">
+        <div class="about-section__inner">
+          <div class="about-section__copy">
+            <p class="site-eyebrow">Quiénes somos</p>
+            <h2>La visualización 3D convertida en una herramienta comercial real</h2>
+            <p>
+              Somos <strong>Tu Casa en 3D</strong>, estudio especializado en visualización arquitectónica para el
+              sector inmobiliario. Ayudamos a promotoras, arquitectos, comercializadoras e interioristas a presentar
+              sus proyectos con renders, planos 3D, tours virtuales y vídeos de alta calidad.
+            </p>
+            <p>
+              <strong>TuPromoción.es</strong> nace para convertir ese material visual en una ficha digital clara,
+              elegante y fácil de compartir. No es un portal inmobiliario masivo: es una extensión comercial del
+              trabajo 3D para vender mejor promociones y proyectos visuales.
+            </p>
+            <a class="site-btn site-btn--primary" href="https://tucasaen3d.es" target="_blank" rel="noopener"
+              >Conocer Tu Casa en 3D</a
+            >
+          </div>
+          <div class="about-section__visual">
+            <img
+              src="https://tucasaen3d.es/wp-content/uploads/2021/08/Drone-6.jpg"
+              alt="Render 3D exterior"
+              loading="lazy"
+            />
+            <img
+              src="https://tucasaen3d.es/wp-content/uploads/2022/05/SCC-006.0000.jpg"
+              alt="Render 3D interior"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="beneficios" class="benefits-section">
+        <div class="benefits-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Por qué elegirnos</p>
+          <h2 class="benefits-section__title">Material visual profesional convertido en una ficha lista para compartir</h2>
+          <div class="benefits-grid">
+            <article class="benefit-card">
+              <span class="benefit-card__icon">⚡</span>
+              <h3>Publicación rápida cuando el material está listo</h3>
+              <p>Si el material está preparado, podemos publicar la ficha en 48 h.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">🎨</span>
+              <h3>Diseño profesional y ordenado</h3>
+              <p>Cada promoción o proyecto se presenta con una imagen cuidada, clara y fácil de compartir.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">📸</span>
+              <h3>Renders, planos y documentación integrados</h3>
+              <p>Galería visual, tipologías, planos, PDF y datos principales del proyecto en un solo enlace.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">🔗</span>
+              <h3>Enlace comercial listo para compartir</h3>
+              <p>Un enlace limpio para WhatsApp, email, campañas, presentaciones y redes sociales.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">🔄</span>
+              <h3>Actualizable según evoluciona el proyecto</h3>
+              <p>Podemos actualizar la ficha cuando haya nuevos renders, precios o tipologías.</p>
+            </article>
+            <article class="benefit-card">
+              <span class="benefit-card__icon">🏢</span>
+              <h3>Conectado con Tu Casa en 3D</h3>
+              <p>El mismo equipo que crea el material visual puede dejar preparada la presentación online.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="service-grid-section">
+        <div class="service-grid-section__inner">
+          <article class="service-info-card">
+            <p class="site-eyebrow">Para interioristas y estudios de diseño</p>
+            <h2>
+              Convierte tus proyectos 3D en una presentación online profesional para enseñar a clientes, promotoras o
+              colaboradores.
+            </h2>
+            <p>
+              Si ya trabajas con renders, planos, moodboards o propuestas de interiorismo, podemos ayudarte a
+              convertir ese material en una ficha digital elegante, ordenada y fácil de compartir. Ideal para
+              presentar reformas, viviendas piloto, propuestas de decoración, espacios comerciales o proyectos llave en
+              mano.
+            </p>
+            <ul class="scope-list">
+              <li>Galería de imágenes del proyecto</li>
+              <li>Descripción comercial del concepto</li>
+              <li>Planos, estancias o zonas destacadas</li>
+              <li>PDF descargable si lo necesitas</li>
+              <li>Enlace privado o público para enviar al cliente</li>
+            </ul>
+            <a
+              class="site-btn site-btn--primary"
+              href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20quiero%20informaci%C3%B3n%20para%20presentar%20un%20proyecto%20de%20interiorismo%20en%20formato%20digital."
+              target="_blank"
+              rel="noopener"
+              >Quiero presentar un proyecto de interiorismo</a
+            >
+          </article>
+          <article class="service-info-card">
+            <p class="site-eyebrow">¿Qué incluye la ficha digital?</p>
+            <h2>Una presentación online clara, visual y preparada para compartir con compradores, agencias, promotoras o clientes.</h2>
+            <ul class="scope-list">
+              <li>Portada visual de la promoción o proyecto</li>
+              <li>Galería de renders e imágenes</li>
+              <li>Planos y tipologías</li>
+              <li>Memoria de calidades o descripción comercial</li>
+              <li>Ubicación del proyecto</li>
+              <li>PDF descargable si es necesario</li>
+              <li>Contacto directo</li>
+              <li>Enlace listo para compartir por WhatsApp, email o campañas</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="precios" class="pricing-section">
+        <div class="pricing-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Paquetes y precios</p>
+          <h2 class="pricing-section__title">
+            Convierte tus renders, planos y vídeos en una herramienta comercial lista para compartir.
+          </h2>
+          <p class="pricing-section__lead">
+            La ficha digital en TuPromoción.es puede ir incluida como bonus al contratar servicios 3D. Para promociones
+            que ya tienen todo el material preparado, también ofrecemos una modalidad básica de publicación mensual.
+          </p>
+          <div class="pricing-grid">
+            <article class="pricing-card">
+              <span class="pricing-card__badge">Pack Bonus 3D</span>
+              <h3>Incluido al contratar servicios 3D</h3>
+              <p class="pricing-card__price">290 EUR <small>valor</small></p>
+              <p class="pricing-card__fee">Bonificación lanzamiento: -290 EUR</p>
+              <ul class="pricing-card__list">
+                <li>Ficha digital en TuPromoción.es incluida como bonus</li>
+                <li>Publicación durante 3 o 6 meses según el paquete 3D</li>
+                <li>Enlace comercial listo para compartir</li>
+                <li>Apoyo visual para vender mejor la promoción</li>
+              </ul>
+              <a class="site-btn site-btn--ghost pricing-card__cta" href="/publica-tu-promocion">Ver bonus incluido</a>
+            </article>
+            <article class="pricing-card pricing-card--featured">
+              <span class="pricing-card__badge pricing-card__badge--gold">Publicación básica</span>
+              <h3>Desde 10 EUR/mes si todo está preparado</h3>
+              <p class="pricing-card__price">Desde 10 EUR <small>/mes</small></p>
+              <p class="pricing-card__fee">
+                Para promociones que ya tienen textos, imágenes, planos y documentación preparados para publicar.
+              </p>
+              <ul class="pricing-card__list">
+                <li>Incluye alojamiento de la ficha y enlace compartible</li>
+                <li>Incluye mantenimiento técnico básico</li>
+                <li>No incluye redacción comercial ni preparación de imágenes</li>
+                <li>No incluye diseño personalizado ni actualizaciones complejas</li>
+              </ul>
+              <a class="site-btn site-btn--primary pricing-card__cta" href="/publica-tu-promocion"
+                >Condiciones de publicación</a
+              >
+            </article>
+            <article class="pricing-card">
+              <span class="pricing-card__badge">Pack Premium</span>
+              <h3>Solución visual y comercial a medida</h3>
+              <p class="pricing-card__price">Presupuesto personalizado</p>
+              <p class="pricing-card__fee">Landing personalizada + extras visuales</p>
+              <ul class="pricing-card__list">
+                <li>Landing personalizada</li>
+                <li>Textos comerciales mejorados</li>
+                <li>Galería avanzada con renders, vídeos o planos</li>
+                <li>Preparado para proyectos con mayor ambición comercial</li>
+              </ul>
+              <a
+                class="site-btn site-btn--ghost pricing-card__cta"
+                href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromoci%C3%B3n.es.%20Quiero%20informaci%C3%B3n%20sobre%20una%20ficha%20digital%20para%20una%20promoci%C3%B3n."
+                target="_blank"
+                rel="noopener"
+                >Pedir propuesta premium</a
+              >
+            </article>
+          </div>
+          <p class="pricing-section__note">
+            Servicios 3D, renders, vídeos, tours virtuales, memoria visual e imágenes comerciales: presupuesto
+            personalizado según el proyecto.
+          </p>
+        </div>
+      </section>
+
+      <section id="como-funciona" class="how-section">
+        <div class="how-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Cómo funciona</p>
+          <h2 class="how-section__title">De tu material visual a una ficha digital profesional</h2>
+          <div class="how-steps">
+            <article class="how-step">
+              <span class="how-step__num">01</span>
+              <h3>Nos envías el material</h3>
+              <p>Renders, planos, memoria comercial, tipologías, vídeos o documentación visual del proyecto.</p>
+            </article>
+            <article class="how-step">
+              <span class="how-step__num">02</span>
+              <h3>Preparamos la ficha digital</h3>
+              <p>Ordenamos el contenido para que la presentación sea clara, visual y fácil de compartir.</p>
+            </article>
+            <article class="how-step">
+              <span class="how-step__num">03</span>
+              <h3>La usas como herramienta comercial</h3>
+              <p>Compartes un enlace profesional en WhatsApp, email, campañas o presentaciones a cliente.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta-band">
+        <div class="cta-band__inner">
+          <div class="cta-band__copy">
+            <p class="site-eyebrow site-eyebrow--gold">Siguiente paso</p>
+            <h2>Si ya tienes renders, planos o material visual, podemos convertirlo en una ficha digital lista para compartir.</h2>
+            <p>
+              Cuéntanos qué tipo de proyecto tienes y te diremos qué parte entra como bonus, qué extras visuales pueden
+              ayudarte más y qué se presupuesta aparte.
+            </p>
+          </div>
+          <div class="cta-band__actions">
+            <a
+              class="site-btn site-btn--gold"
+              href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromoci%C3%B3n.es.%20Quiero%20informaci%C3%B3n%20sobre%20una%20ficha%20digital%20para%20una%20promoci%C3%B3n."
+              target="_blank"
+              rel="noopener"
+              >Solicitar presupuesto 3D</a
+            >
+            <a class="site-btn site-btn--ghost-light" href="/ficha-demo">Ver ejemplo de ficha digital</a>
+          </div>
+        </div>
+      </section>
+
+      <a
+        class="floating-wa-btn"
+        href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromoci%C3%B3n.es.%20Quiero%20informaci%C3%B3n%20sobre%20una%20ficha%20digital%20para%20una%20promoci%C3%B3n."
+        target="_blank"
+        rel="noopener"
+        aria-label="Contactar por WhatsApp"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path
+            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+          />
+        </svg>
+      </a>
+
+      <section class="section-3d">
+        <div class="section-3d__inner">
+          <div class="section-3d__copy">
+            <p class="site-eyebrow site-eyebrow--gold">Tu Casa en 3D</p>
+            <h2>La ficha digital es la extensión comercial de tu material 3D</h2>
+            <p>
+              En Tu Casa en 3D creamos renders fotorrealistas, planos 3D, tours virtuales y el material visual que
+              necesita una promoción para vender mejor. Con TuPromoción.es, ese contenido se convierte en una
+              presentación online profesional y fácil de compartir.
+            </p>
+            <ul class="section-3d__list">
+              <li>Renders exteriores e interiores fotorrealistas</li>
+              <li>Planos en 3D por tipología</li>
+              <li>Tours virtuales interactivos</li>
+              <li>Vídeos y material visual comercial</li>
+            </ul>
+            <div class="section-3d__ctas">
+              <a class="site-btn site-btn--gold" href="https://tucasaen3d.es" target="_blank" rel="noopener"
+                >Visitar tucasaen3d.es</a
+              >
+              <a
+                class="site-btn site-btn--ghost-light"
+                href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromoci%C3%B3n.es.%20Quiero%20informaci%C3%B3n%20sobre%20una%20ficha%20digital%20para%20una%20promoci%C3%B3n."
+                target="_blank"
+                rel="noopener"
+                >WhatsApp</a
+              >
+            </div>
+          </div>
+          <div class="section-3d__gallery">
+            <img
+              src="https://tucasaen3d.es/wp-content/uploads/2021/08/ZPiscina-F1-001.jpg"
+              alt="Render 3D zona piscina"
+              loading="lazy"
+            />
+            <img
+              src="https://tucasaen3d.es/wp-content/uploads/2022/05/SCC-006.0000.jpg"
+              alt="Render 3D salón comedor"
+              loading="lazy"
+            />
+            <img
+              src="https://tucasaen3d.es/wp-content/uploads/2021/08/ZCalle-F0-001.jpg"
+              alt="Render 3D fachada exterior"
+              loading="lazy"
+            />
+            <img
+              src="https://tucasaen3d.es/wp-content/uploads/2022/05/Cocina-002.0000.jpg"
+              alt="Render 3D cocina"
+              loading="lazy"
+            />
+            <img
+              src="https://tucasaen3d.es/wp-content/uploads/2021/08/Drone-8.jpg"
+              alt="Vista aérea de promoción"
+              loading="lazy"
+            />
+            <img
+              src="https://tucasaen3d.es/wp-content/uploads/2022/05/Dormitorio-pral-001.0000.jpg"
+              alt="Render 3D dormitorio principal"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="colaboradoras" class="partners-section" hidden>
+        <div class="partners-section__inner">
+          <p class="site-eyebrow site-eyebrow--centered">Empresas colaboradoras</p>
+          <h2 class="partners-section__title">Promotoras que ya confían en nosotros</h2>
+          <div id="partnersGrid" class="partners-grid"></div>
+        </div>
+      </section>
+
+      <footer class="public-footer">
+        <div class="public-footer__inner">
+          <img src="/img/tupromocion-logo.png" alt="TuPromoción.es" class="public-footer__logo" />
+          <p class="public-footer__tagline">Fichas digitales y servicios 3D para presentar mejor promociones y proyectos visuales</p>
+          <nav class="public-footer__links">
+            <a href="/publica-tu-promocion">Publica tu promoción</a>
+            <a href="/interioristas">Interioristas</a>
+            <a href="/ficha-demo">Ficha demo</a>
+            <a href="https://tucasaen3d.es" target="_blank" rel="noopener">Tu Casa en 3D</a>
+            <a href="#precios">Precios</a>
+            <a
+              href="https://api.whatsapp.com/send?phone=34634557033&text=Hola%2C%20me%20interesa%20TuPromoci%C3%B3n.es.%20Quiero%20informaci%C3%B3n%20sobre%20una%20ficha%20digital%20para%20una%20promoci%C3%B3n."
+              target="_blank"
+              rel="noopener"
+              >WhatsApp</a
+            >
+          </nav>
+          <p class="public-footer__legal">© 2026 TuPromoción.es · Una solución de Tu Casa en 3D</p>
+        </div>
+      </footer>
+    </section>
+
+    <script src="/app.js?v=20260514y"></script>
+
+    <div id="cookie-bar" hidden>
+      <p>
+        Usamos cookies propias y de terceros (Google Analytics) para analizar el uso de la web. Puedes aceptarlas o
+        continuar solo con las esenciales.
+      </p>
+      <div class="cookie-bar__actions">
+        <button id="cookie-accept" class="cookie-btn cookie-btn--primary">Aceptar todas</button>
+        <button id="cookie-reject" class="cookie-btn cookie-btn--secondary">Solo esenciales</button>
+      </div>
+    </div>
+
+    <style>
+      #cookie-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        background: #1a1a1a;
+        color: #e8e8e8;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.85rem 1.25rem;
+        font-size: 0.82rem;
+        line-height: 1.4;
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.25);
+      }
+      #cookie-bar[hidden] {
+        display: none;
+      }
+      #cookie-bar p {
+        margin: 0;
+        flex: 1;
+      }
+      .cookie-bar__actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+      }
+      .cookie-btn {
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        padding: 0.45rem 0.9rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+      .cookie-btn--primary {
+        background: #fff;
+        color: #1a1a1a;
+      }
+      .cookie-btn--secondary {
+        background: transparent;
+        color: #aaa;
+        border: 1px solid #555;
+      }
+      @media (max-width: 600px) {
+        #cookie-bar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .cookie-bar__actions {
+          width: 100%;
+        }
+        .cookie-btn {
+          flex: 1;
+        }
+      }
+    </style>
+
+    <script>
+      (function () {
+        var GA_ID = "G-M28N9NPCG2";
+        var KEY = "cookie_consent";
+
+        function loadGA() {
+          if (window._gaLoaded) return;
+          window._gaLoaded = true;
+          var s = document.createElement("script");
+          s.async = true;
+          s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function () {
+            window.dataLayer.push(arguments);
+          };
+          gtag("js", new Date());
+          gtag("config", GA_ID, { anonymize_ip: true });
+        }
+
+        var consent = localStorage.getItem(KEY);
+        if (consent === "accepted") {
+          loadGA();
+          return;
+        }
+        if (consent === "rejected") {
+          return;
+        }
+
+        var bar = document.getElementById("cookie-bar");
+        bar.removeAttribute("hidden");
+
+        document.getElementById("cookie-accept").addEventListener("click", function () {
+          localStorage.setItem(KEY, "accepted");
+          bar.setAttribute("hidden", "");
+          loadGA();
+        });
+        document.getElementById("cookie-reject").addEventListener("click", function () {
+          localStorage.setItem(KEY, "rejected");
+          bar.setAttribute("hidden", "");
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,11 +1,21 @@
 Options -Indexes
 ServerSignature Off
 
+# La home pública usa index.php (SSR de proyectos); el panel usa /admin/
+DirectoryIndex index.php index.html
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Bloquear acceso directo a /storage/ (excepto /storage/assets/)
     RewriteCond %{REQUEST_URI} ^/storage/
     RewriteCond %{REQUEST_URI} !^/storage/assets/
     RewriteRule ^ - [F,L]
+
+    # Enrutar /propuesta/{slug} → propuesta/index.php?slug={slug}
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^propuesta/([a-zA-Z0-9_-]+)/?$ propuesta/index.php?slug=$1 [L,QSA]
 </IfModule>
 
 # Cabeceras de seguridad
