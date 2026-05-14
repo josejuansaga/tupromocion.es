@@ -51,9 +51,60 @@ function getProposalStatusLabel(status) {
     draft: "Borrador",
     sent: "Enviada",
     accepted: "Aceptada",
+    rejected: "Rechazada",
     expired: "Caducada",
   };
   return map[status] || "Propuesta";
+}
+
+/**
+ * Renderiza los botones de acción (Aceptar / Rechazar) o el estado final si ya se respondió.
+ * Se inserta en la sección hero y en la banda CTA.
+ */
+function renderRespondButtons(data) {
+  const slug   = window.PROPOSAL_PUBLIC_SLUG || "";
+  const status = String(data.status || "draft");
+
+  if (status === "accepted") {
+    const when = data.respondedAt ? ` el ${formatProposalDate(data.respondedAt)}` : "";
+    return `
+      <div class="proposal-responded-state proposal-responded-state--accepted">
+        <span class="proposal-responded-icon">✓</span>
+        <div>
+          <strong>Propuesta aceptada</strong>
+          ${when ? `<small>${when}</small>` : ""}
+        </div>
+      </div>`;
+  }
+
+  if (status === "rejected") {
+    const when = data.respondedAt ? ` el ${formatProposalDate(data.respondedAt)}` : "";
+    return `
+      <div class="proposal-responded-state proposal-responded-state--rejected">
+        <span class="proposal-responded-icon">✗</span>
+        <div>
+          <strong>Propuesta rechazada</strong>
+          ${when ? `<small>${when}</small>` : ""}
+        </div>
+      </div>`;
+  }
+
+  if (!slug) {
+    // Fallback: sin slug no podemos llamar a la API — usar mailto si está disponible
+    return data.ctaEmail
+      ? `<a class="site-btn site-btn--gold" href="mailto:${escapeHtml(data.ctaEmail)}?subject=${encodeURIComponent(data.acceptSubject || `Aceptación de propuesta ${data.projectName || ""}`)}">${escapeHtml(data.acceptLabel || "Aceptar propuesta")}</a>`
+      : "";
+  }
+
+  return `
+    <div class="proposal-respond-buttons" data-proposal-respond-zone>
+      <button class="site-btn site-btn--gold" type="button" data-proposal-respond-action="accepted">
+        ${escapeHtml(data.acceptLabel || "Aceptar propuesta")}
+      </button>
+      <button class="site-btn site-btn--ghost proposal-reject-btn" type="button" data-proposal-respond-action="rejected">
+        No acepto / Necesito cambios
+      </button>
+    </div>`;
 }
 
 function isProposalExpired(validUntil) {
@@ -305,7 +356,7 @@ function buildProposalMarkup(data) {
             ${preparedByBits.length ? `<p class="proposal-hero__prepared">Preparado por <strong>${escapeHtml(preparedByBits.join(" · "))}</strong></p>` : ""}
           </div>
           <div class="proposal-hero__actions">
-            ${data.ctaEmail ? `<a class="site-btn site-btn--primary" href="mailto:${escapeHtml(data.ctaEmail)}?subject=${encodeURIComponent(data.acceptSubject || `Aceptación de propuesta ${data.projectName || ""}`)}">${escapeHtml(data.acceptLabel || "Aceptar propuesta")}</a>` : ""}
+            ${renderRespondButtons(data)}
             <button class="site-btn site-btn--ghost proposal-print-btn" type="button" onclick="window.print()">${escapeHtml(data.printLabel || "Imprimir / Guardar PDF")}</button>
           </div>
         </div>
@@ -391,7 +442,7 @@ function buildProposalMarkup(data) {
             <p>${escapeHtml(data.nextStepText || "La propuesta está pensada para explicar mejor el valor del trabajo, el alcance real y los bonus aplicados.")}</p>
           </div>
           <div class="cta-band__actions">
-            ${data.ctaEmail ? `<a class="site-btn site-btn--gold" href="mailto:${escapeHtml(data.ctaEmail)}?subject=${encodeURIComponent(data.acceptSubject || `Aceptación de propuesta ${data.projectName || ""}`)}">${escapeHtml(data.acceptLabel || "Aceptar propuesta")}</a>` : ""}
+            ${renderRespondButtons(data)}
             ${data.secondaryCtaHref ? `<a class="site-btn site-btn--ghost-light" href="${escapeHtml(data.secondaryCtaHref)}">${escapeHtml(data.secondaryCtaLabel || "Ver más")}</a>` : ""}
           </div>
         </div>
@@ -424,6 +475,65 @@ async function resolveProposalData() {
   return null;
 }
 
+/**
+ * Conecta los botones de aceptar / rechazar con el endpoint /api/proposal_respond.php
+ */
+function wireProposalRespond(data) {
+  const slug = window.PROPOSAL_PUBLIC_SLUG || "";
+  if (!slug) return;
+
+  function replaceRespondZones(freshData) {
+    document.querySelectorAll("[data-proposal-respond-zone]").forEach((zone) => {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = renderRespondButtons(freshData);
+      zone.replaceWith(tmp.firstElementChild || tmp);
+    });
+  }
+
+  document.querySelectorAll("[data-proposal-respond-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const action = button.dataset.proposalRespondAction;
+      const verb   = action === "accepted" ? "aceptar" : "rechazar";
+      if (!window.confirm(`¿Seguro que quieres ${verb} esta propuesta?`)) return;
+
+      // Deshabilitar todos los botones mientras se procesa
+      document.querySelectorAll("[data-proposal-respond-action]").forEach((b) => {
+        b.disabled  = true;
+        b.textContent = "Enviando…";
+      });
+
+      try {
+        const res    = await fetch("/api/proposal_respond.php", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ slug, action }),
+        });
+        const result = await res.json().catch(() => ({}));
+
+        if (!result.ok && !result.alreadyResponded) {
+          throw new Error(result.error || "Error desconocido");
+        }
+
+        // Construir estado local para no recargar página
+        const freshData = {
+          ...data,
+          status:      result.status || action,
+          respondedAt: result.respondedAt || new Date().toISOString(),
+        };
+        replaceRespondZones(freshData);
+      } catch {
+        window.alert("No se ha podido registrar la respuesta. Por favor contacta directamente.");
+        document.querySelectorAll("[data-proposal-respond-action]").forEach((b) => {
+          b.disabled    = false;
+          b.textContent = b.dataset.proposalRespondAction === "accepted"
+            ? (data.acceptLabel || "Aceptar propuesta")
+            : "No acepto / Necesito cambios";
+        });
+      }
+    });
+  });
+}
+
 async function initProposalTemplate() {
   const mountNode = document.querySelector("#proposal-root");
   if (!mountNode) return;
@@ -431,6 +541,7 @@ async function initProposalTemplate() {
     const data = await resolveProposalData();
     if (!data) return;
     mountNode.innerHTML = buildProposalMarkup(data);
+    wireProposalRespond(data);
   } catch (error) {
     mountNode.innerHTML =
       '<main class="proposal-page"><section class="proposal-section"><div class="proposal-section__inner"><div class="proposal-card"><p class="site-eyebrow">Error</p><p>No se ha podido cargar la propuesta.</p></div></div></section></main>';

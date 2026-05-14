@@ -1082,6 +1082,11 @@ select {
   color: #8f2f2f;
 }
 
+.proposal-status--rejected {
+  background: rgba(192,57,43,0.12);
+  color: #b03a2e;
+}
+
 .service-hero__inner {
   max-width: 860px;
 }
@@ -4367,6 +4372,89 @@ select:focus {
 .proposal-status-badge--expired {
   background: rgba(192, 57, 43, 0.10);
   color: var(--danger);
+}
+
+.proposal-status-badge--rejected {
+  background: rgba(192, 57, 43, 0.13);
+  color: #b03a2e;
+}
+
+/* ── Botones de respuesta en página pública de propuesta ── */
+.proposal-respond-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.proposal-reject-btn {
+  opacity: 0.75;
+  font-size: 0.88rem;
+}
+
+.proposal-reject-btn:hover {
+  opacity: 1;
+}
+
+/* ── Estado "ya respondida" ── */
+.proposal-responded-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+.proposal-responded-state strong {
+  display: block;
+  font-weight: 700;
+}
+
+.proposal-responded-state small {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.proposal-responded-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.proposal-responded-state--accepted {
+  background: rgba(14, 122, 60, 0.12);
+  color: #0e7a3c;
+}
+
+.proposal-responded-state--rejected {
+  background: rgba(192, 57, 43, 0.10);
+  color: #b03a2e;
+}
+
+/* ── Stats de presupuestos en el dashboard ── */
+.dashboard-stat--accepted strong {
+  color: #0e7a3c;
+}
+
+.dashboard-stat--rejected strong {
+  color: #b03a2e;
+}
+
+.dashboard-stat--pending strong {
+  color: var(--gold, #b4862e);
+}
+
+/* ── Mensaje de respuesta en tarjeta lateral del editor ── */
+.proposal-summary-response-msg {
+  grid-column: 1 / -1;
+}
+
+.proposal-summary-response-msg em {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 #proposalsPanel .field span {

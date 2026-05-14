@@ -1968,6 +1968,8 @@ function decorateProposalEditorLayout() {
         <div><span>Tipo</span><strong>${escapeHtml(draft.projectType || "Sin definir")}</strong></div>
         <div><span>Fecha</span><strong>${escapeHtml(draft.proposalDate || "-")}</strong></div>
         <div><span>Revision</span><strong>${escapeHtml(proposalUpdated || "-")}</strong></div>
+        ${draft.respondedAt ? `<div><span>${draft.status === "accepted" ? "Aceptada" : "Rechazada"}</span><strong>${escapeHtml(formatShortDate(draft.respondedAt))}</strong></div>` : ""}
+        ${draft.respondedMessage ? `<div class="proposal-summary-response-msg"><span>Mensaje</span><em>${escapeHtml(draft.respondedMessage)}</em></div>` : ""}
       </div>
     </article>
     <article class="proposal-summary-card">
@@ -2015,7 +2017,9 @@ function getProposalStatusMeta(status) {
     case "sent":
       return { label: "Enviada", tone: "sent" };
     case "accepted":
-      return { label: "Aceptada", tone: "accepted" };
+      return { label: "Aceptada ✓", tone: "accepted" };
+    case "rejected":
+      return { label: "Rechazada", tone: "rejected" };
     case "expired":
       return { label: "Caducada", tone: "expired" };
     default:
@@ -3773,9 +3777,14 @@ function renderManagementUi() {
 
 function renderDashboardStats() {
   if (!els.dashboardStats) return;
-  const totalVisits = db.projects.reduce((sum, project) => sum + getProjectVisitCount(project.id), 0);
+  const totalVisits   = db.projects.reduce((sum, project) => sum + getProjectVisitCount(project.id), 0);
   const totalContacts = db.projects.reduce((sum, project) => sum + getProjectMetrics(project.id).contactForm, 0);
-  const totalClicks = db.projects.reduce((sum, project) => sum + getProjectInteractionCount(project.id), 0);
+  const totalClicks   = db.projects.reduce((sum, project) => sum + getProjectInteractionCount(project.id), 0);
+
+  const proposalsSent     = db.proposals.filter((p) => p.status === "sent").length;
+  const proposalsAccepted = db.proposals.filter((p) => p.status === "accepted").length;
+  const proposalsRejected = db.proposals.filter((p) => p.status === "rejected").length;
+  const proposalsPending  = db.proposals.filter((p) => p.status === "draft" || p.status === "sent").length;
 
   els.dashboardStats.innerHTML = `
     <article class="dashboard-stat">
@@ -3798,6 +3807,21 @@ function renderDashboardStats() {
       <strong>${totalClicks}</strong>
       <span>Clics</span>
     </article>
+    ${db.proposals.length ? `
+    <article class="dashboard-stat dashboard-stat--proposals">
+      <strong>${db.proposals.length}</strong>
+      <span>Presupuestos</span>
+    </article>
+    <article class="dashboard-stat dashboard-stat--accepted">
+      <strong>${proposalsAccepted}</strong>
+      <span>Aceptados</span>
+    </article>
+    <article class="dashboard-stat dashboard-stat--pending">
+      <strong>${proposalsPending}</strong>
+      <span>Pendientes</span>
+    </article>
+    ${proposalsRejected ? `<article class="dashboard-stat dashboard-stat--rejected"><strong>${proposalsRejected}</strong><span>Rechazados</span></article>` : ""}
+    ` : ""}
   `;
 }
 
