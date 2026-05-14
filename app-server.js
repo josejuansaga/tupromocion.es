@@ -7,7 +7,9 @@ function safeRandomUUID() {
 
 const URL_QUERY = new URLSearchParams(window.location.search);
 const PUBLIC_PROJECT_ID = URL_QUERY.get("promo") || "";
-const PUBLIC_PROJECT_SLUG = URL_QUERY.get("promo_slug") || "";
+// Lee el slug tanto de /?promo_slug=... (legacy) como de /promocion/{slug} (URL amigable)
+const PUBLIC_PROJECT_SLUG = URL_QUERY.get("promo_slug")
+  || (window.location.pathname.match(/^\/promocion\/([a-zA-Z0-9_-]+)/)?.[1] ?? "");
 const PUBLIC_LANGUAGE = URL_QUERY.get("lang") || "es";
 const IS_ADMIN_ROUTE = /\/admin(?:\/|\/index\.(?:html|php))?$/i.test(window.location.pathname);
 const IS_PUBLIC_HOME_ROUTE = !IS_ADMIN_ROUTE && !PUBLIC_PROJECT_ID && !PUBLIC_PROJECT_SLUG;

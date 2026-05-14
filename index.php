@@ -84,7 +84,9 @@ function wp_build_project_card(array $project, int $index): string {
     $priceFrom   = wp_esc(trim((string) ($state['priceFrom'] ?? '')));
     $cardLabel   = wp_esc(trim((string) ($state['cardLabel'] ?? '')) ?: 'Obra nueva');
     $floors      = is_array($state['floors'] ?? null) ? count($state['floors']) : 0;
-    $href        = wp_esc('/?promo=' . $id);
+    $rawSlug     = trim((string) ($state['publicSlug'] ?? ($project['slug'] ?? '')));
+    $safeSlug    = preg_replace('/[^a-zA-Z0-9_-]/', '', $rawSlug);
+    $href        = $safeSlug ? wp_esc('/promocion/' . $safeSlug) : wp_esc('/?promo=' . $id);
     $num         = str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT);
 
     $coverHtml       = $cover

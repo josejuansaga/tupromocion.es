@@ -12,6 +12,11 @@ DirectoryIndex index.php index.html
     RewriteCond %{REQUEST_URI} !^/storage/assets/
     RewriteRule ^ - [F,L]
 
+    # Enrutar /promocion/{slug} → promocion/index.php?slug={slug}
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^promocion/([a-zA-Z0-9_-]+)/?$ promocion/index.php?slug=$1 [L,QSA]
+
     # Enrutar /propuesta/{slug} → propuesta/index.php?slug={slug}
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

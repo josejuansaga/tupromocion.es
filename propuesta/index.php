@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * propuesta/index.php — Página pública de propuesta comercial
  *
@@ -105,7 +105,7 @@ header('Cache-Control: no-store, no-cache');  // propuestas son privadas
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260514d" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=9ac7401" />
 
     <title><?= $eTitle ?></title>
     <meta name="description" content="<?= $eDescription ?>" />
@@ -133,7 +133,7 @@ header('Cache-Control: no-store, no-cache');  // propuestas son privadas
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260514k" />
+    <link rel="stylesheet" href="/styles.css?v=9ac7401" />
   </head>
   <body>
     <!-- El slug se expone al JS para que cargue los datos vía /api/public_proposal.php -->
@@ -153,6 +153,6 @@ header('Cache-Control: no-store, no-cache');  // propuestas son privadas
       </main>
     </div>
 
-    <script src="/proposal-template.js?v=20260514k"></script>
+    <script src="/proposal-template.js?v=9ac7401"></script>
   </body>
 </html>
