@@ -43,6 +43,7 @@
               <option value="draft">Borrador</option>
               <option value="sent">Enviada</option>
               <option value="accepted">Aceptada</option>
+              <option value="rejected">Rechazada</option>
               <option value="expired">Caducada</option>
             </select>
           </div>
@@ -88,10 +89,28 @@
             </div>
           </section>
         </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Backup diario de storage</h2>
+            <span id="backupStatus">Configuracion de seguridad</span>
+          </div>
+          <div class="panel-body">
+            <div class="field-grid field-grid--3">
+              <label class="field field-check"><span><input id="backupEnabled" type="checkbox" /> Backup automatico activo</span></label>
+              <label class="field"><span>Copias a conservar</span><input id="backupKeep" type="number" min="1" max="90" step="1" /></label>
+              <label class="field"><span>Frecuencia en horas</span><input id="backupFrequency" type="number" min="1" max="168" step="1" /></label>
+            </div>
+            <div class="metric-list" id="backupInfo"></div>
+            <div class="inline-actions" style="margin-top:16px">
+              <button class="btn btn-primary" type="button" id="saveBackupSettingsBtn">Guardar configuracion</button>
+              <button class="btn btn-ghost" type="button" id="runBackupBtn">Hacer backup ahora</button>
+            </div>
+          </div>
+        </section>
       </section>
     </main>
 
-    <script src="./common.js?v=20260514w"></script>
-    <script src="./command-center.js?v=20260514k"></script>
+    <script src="./common.js?v=20260515b"></script>
+    <script src="./command-center.js?v=20260515b"></script>
   </body>
 </html>

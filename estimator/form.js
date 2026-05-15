@@ -346,6 +346,7 @@
       </div>
       <div class="inline-actions">
         <button class="btn btn-primary" type="button" id="saveProposalBtn">Guardar</button>
+        ${proposal.status === "draft" ? `<button class="btn btn-ghost" type="button" id="markSentBtn">Marcar como enviada</button>` : ""}
         <a class="btn btn-ghost" href="${proposal.slug ? Estimator.publicProposalUrl(proposal.slug) : "#"}" target="_blank" rel="noreferrer" id="openProposalBtn">Abrir link</a>
         <button class="btn btn-ghost" type="button" id="copyProposalBtn">Copiar link</button>
         <a class="btn btn-ghost" href="./">Volver</a>
@@ -353,6 +354,7 @@
     `;
 
     document.querySelector("#saveProposalBtn")?.addEventListener("click", saveProposal);
+    document.querySelector("#markSentBtn")?.addEventListener("click", markAsSent);
     document.querySelector("#copyProposalBtn")?.addEventListener("click", async () => {
       if (!proposal.slug) return;
       await Estimator.copyText(Estimator.publicProposalUrl(proposal.slug));
@@ -366,8 +368,10 @@
     });
   }
 
-  async function saveProposal() {
-    const previewTab = window.open("", "_blank", "noopener");
+  async function saveProposal(options = {}) {
+    const shouldOpenPreview = options.openPreview !== false;
+    const shouldRedirect = options.redirect !== false;
+    const previewTab = shouldOpenPreview ? window.open("", "_blank", "noopener") : null;
     if (!proposal.projectName) {
       if (previewTab) previewTab.close();
       touch("Falta el nombre del proyecto");
@@ -408,7 +412,15 @@
     touch("Guardado");
     const publicUrl = Estimator.publicProposalUrl(proposal.slug);
     if (previewTab) previewTab.location.href = publicUrl;
-    window.location.href = "./";
+    if (shouldRedirect) window.location.href = "./";
+  }
+
+  async function markAsSent() {
+    proposal.status = "sent";
+    fields.status.value = "sent";
+    proposal.sentAt = proposal.sentAt || new Date().toISOString();
+    await saveProposal({ openPreview: false, redirect: false });
+    touch("Marcado como enviado");
   }
 
   noticeNode.innerHTML = `<div><strong>Presupuesto online</strong><span>Ahora trabajas por lineas: puedes anadir productos del catalogo o escribirlos a mano.</span></div>`;

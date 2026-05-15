@@ -64,6 +64,7 @@ function getProposalStatusLabel(status) {
     draft: "Borrador",
     sent: "Enviada",
     accepted: "Aceptada",
+    rejected: "Rechazada",
     expired: "Caducada",
   };
   return map[status] || "Propuesta";
@@ -307,6 +308,24 @@ function renderPriceSummaryRows(items = [], currency) {
     .join("");
 }
 
+function ensureProposalPriceSummary(data = {}) {
+  if (Array.isArray(data.priceSummary) && data.priceSummary.length) return data.priceSummary;
+  const currency = data.currency || "EUR";
+  const items = Array.isArray(data.priceItems) ? data.priceItems : [];
+  const baseSubtotal = items.reduce((sum, item) => {
+    const subtotal = Number(item.subtotal ?? (Number(item.quantity || 1) * Number(item.unitPrice || 0)));
+    return sum + subtotal;
+  }, 0);
+  const vatRate = Number(data.vatRate || 0);
+  const irpfRate = Number(data.irpfRate || 0);
+  const vatAmount = data.applyVat === false ? 0 : baseSubtotal * (vatRate / 100);
+  const irpfAmount = data.applyIrpf ? baseSubtotal * (irpfRate / 100) : 0;
+  const rows = [{ label: "Base imponible", value: baseSubtotal }];
+  if (vatAmount > 0) rows.push({ label: `IVA (${vatRate} %)`, value: vatAmount });
+  if (irpfAmount > 0) rows.push({ label: `IRPF (${irpfRate} %)`, valueText: `-${formatProposalMoney(irpfAmount, currency)}` });
+  return rows;
+}
+
 function renderValueRows(items = []) {
   return items
     .map(
@@ -328,6 +347,7 @@ function renderValueRows(items = []) {
 
 function buildProposalMarkup(data) {
   const currency = data.currency || "EUR";
+  const priceSummary = ensureProposalPriceSummary(data);
   const totalText = cleanMoneyText(
     data.totalText || `${formatProposalMoney(data.total ?? 0, currency)}${data.vatNote ? ` ${data.vatNote}` : ""}`
   );
@@ -408,7 +428,7 @@ function buildProposalMarkup(data) {
             <div class="proposal-table">
               <div class="proposal-table__head"><span>Concepto</span><span>Cantidad</span><span>Precio unitario</span><span>Subtotal</span></div>
               ${renderPriceRows(data.priceItems || [], currency)}
-              ${renderPriceSummaryRows(data.priceSummary || [], currency)}
+              ${renderPriceSummaryRows(priceSummary, currency)}
               <div class="proposal-table__row proposal-table__row--total"><span>Total</span><span></span><span></span><strong>${escapeHtml(totalText)}</strong></div>
             </div>
             <div class="proposal-total-highlight">
@@ -466,6 +486,8 @@ function buildProposalMarkup(data) {
             <p>${escapeHtml(data.nextStepText || "La propuesta está pensada para explicar mejor el valor del trabajo, el alcance real y los bonus aplicados.")}</p>
           </div>
           <div class="cta-band__actions">
+            <button class="site-btn site-btn--gold proposal-response-btn" type="button" data-proposal-response="accepted">${escapeHtml(data.acceptLabel || "Aceptar propuesta")}</button>
+            <button class="site-btn site-btn--ghost-light proposal-response-btn" type="button" data-proposal-response="rejected">Rechazar propuesta</button>
             ${data.ctaEmail ? `<a class="site-btn site-btn--gold" href="mailto:${escapeHtml(data.ctaEmail)}?subject=${encodeURIComponent(data.acceptSubject || `Aceptación de propuesta ${data.projectName || ""}`)}">${escapeHtml(data.acceptLabel || "Quiero avanzar con esta propuesta")}</a>` : ""}
             ${data.secondaryCtaHref ? `<a class="site-btn site-btn--ghost-light" href="${escapeHtml(data.secondaryCtaHref)}">${escapeHtml(data.secondaryCtaLabel || "Ver más")}</a>` : ""}
           </div>
@@ -515,10 +537,45 @@ async function initProposalTemplate() {
       );
     }
     mountNode.innerHTML = buildProposalMarkup(data);
+    bindProposalResponseButtons(data);
   } catch (error) {
     mountNode.innerHTML =
       '<main class="proposal-page"><section class="proposal-section"><div class="proposal-section__inner"><div class="proposal-card"><p class="site-eyebrow">Error</p><p>No se ha podido cargar la propuesta.</p></div></div></section></main>';
   }
+}
+
+function bindProposalResponseButtons(data = {}) {
+  const buttons = document.querySelectorAll("[data-proposal-response]");
+  if (["accepted", "rejected"].includes(String(data.status || ""))) {
+    buttons.forEach((button) => { button.disabled = true; });
+    return;
+  }
+  buttons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!window.PROPOSAL_PUBLIC_SLUG) return;
+      const action = button.dataset.proposalResponse;
+      const label = action === "accepted" ? "aceptar" : "rechazar";
+      const message = action === "rejected" ? window.prompt("Si quieres, indica el motivo del rechazo:", "") || "" : "";
+      button.textContent = "Enviando...";
+      buttons.forEach((item) => { item.disabled = true; });
+      try {
+        const response = await fetch("/api/proposal_respond.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ slug: window.PROPOSAL_PUBLIC_SLUG, action, message }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.ok === false) throw new Error(payload.error || "response-error");
+        alert(action === "accepted" ? "Propuesta aceptada. Gracias, nos pondremos en contacto." : "Respuesta registrada. Gracias.");
+        location.reload();
+      } catch (error) {
+        alert(`No se ha podido ${label} la propuesta. Puedes responder por email o WhatsApp.`);
+        buttons.forEach((item) => { item.disabled = false; });
+        button.textContent = action === "accepted" ? (data.acceptLabel || "Aceptar propuesta") : "Rechazar propuesta";
+      }
+    });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", initProposalTemplate);

@@ -227,6 +227,7 @@ tbody td { padding: 11px 14px; vertical-align: top; }
 .badge-draft { background: rgba(107, 97, 88, 0.12); color: var(--muted); }
 .badge-sent { background: rgba(176, 133, 64, 0.14); color: #8a6324; }
 .badge-accepted { background: rgba(27, 59, 53, 0.12); color: var(--green); }
+.badge-rejected { background: rgba(224, 82, 82, 0.15); color: var(--red); }
 .badge-expired { background: rgba(224, 82, 82, 0.15); color: var(--red); }
 
 .grid-2 {

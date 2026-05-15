@@ -337,6 +337,11 @@ select {
 
 .site-btn:hover { opacity: 0.88; transform: translateY(-1px); }
 .site-btn:active { transform: translateY(0); }
+.site-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
 
 .site-btn--primary {
   background: var(--tp-green);
@@ -1079,6 +1084,11 @@ select {
 .proposal-status--accepted {
   background: rgba(14,122,60,0.14);
   color: #0e7a3c;
+}
+
+.proposal-status--rejected {
+  background: rgba(145,36,36,0.12);
+  color: #8f2f2f;
 }
 
 .proposal-status--expired {

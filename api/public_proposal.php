@@ -14,6 +14,11 @@ if (!$proposal) {
     webinmo_respond(['ok' => false, 'error' => 'Presupuesto no encontrado.'], 404);
 }
 
+$trackedProposal = webinmo_record_proposal_view($slug);
+if ($trackedProposal) {
+    $proposal = $trackedProposal;
+}
+
 webinmo_respond([
     'ok' => true,
     'data' => [

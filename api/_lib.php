@@ -11,6 +11,7 @@ const WEBINMO_VERSIONS_DIR = WEBINMO_STORAGE_ROOT . '/versions';
 const WEBINMO_BACKUPS_DIR = WEBINMO_STORAGE_ROOT . '/backups';
 const WEBINMO_PROJECT_BACKUPS_DIR = WEBINMO_BACKUPS_DIR . '/projects';
 const WEBINMO_USER_BACKUPS_DIR = WEBINMO_BACKUPS_DIR . '/users';
+const WEBINMO_STORAGE_BACKUPS_DIR = WEBINMO_BACKUPS_DIR . '/storage';
 const WEBINMO_USERS_FILE = WEBINMO_STORAGE_ROOT . '/users.json';
 const WEBINMO_CLIENTS_FILE = WEBINMO_STORAGE_ROOT . '/clients.json';
 const WEBINMO_PROJECT_INDEX_FILE = WEBINMO_STORAGE_ROOT . '/project-index.json';
@@ -61,6 +62,9 @@ function webinmo_ensure_storage(): void {
     }
     if (!is_dir(WEBINMO_USER_BACKUPS_DIR)) {
         mkdir(WEBINMO_USER_BACKUPS_DIR, 0777, true);
+    }
+    if (!is_dir(WEBINMO_STORAGE_BACKUPS_DIR)) {
+        mkdir(WEBINMO_STORAGE_BACKUPS_DIR, 0777, true);
     }
     if (!file_exists(WEBINMO_USERS_FILE)) {
         webinmo_write_json(WEBINMO_USERS_FILE, [[
@@ -218,6 +222,15 @@ function webinmo_default_backup_settings(): array {
             'enabled' => true,
             'keep' => 20,
         ],
+        'storage' => [
+            'enabled' => true,
+            'keep' => 14,
+            'frequencyHours' => 24,
+            'lastRunAt' => '',
+            'lastStatus' => '',
+            'lastFile' => '',
+            'token' => bin2hex(random_bytes(16)),
+        ],
     ];
 }
 
@@ -225,6 +238,12 @@ function webinmo_normalize_backup_settings(array $settings): array {
     $defaults = webinmo_default_backup_settings();
     $projectKeep = (int) ($settings['projects']['keep'] ?? $defaults['projects']['keep']);
     $userKeep = (int) ($settings['users']['keep'] ?? $defaults['users']['keep']);
+    $storageKeep = (int) ($settings['storage']['keep'] ?? $defaults['storage']['keep']);
+    $frequencyHours = (int) ($settings['storage']['frequencyHours'] ?? $defaults['storage']['frequencyHours']);
+    $token = trim((string) ($settings['storage']['token'] ?? ''));
+    if ($token === '') {
+        $token = $defaults['storage']['token'];
+    }
 
     return [
         'projects' => [
@@ -234,6 +253,15 @@ function webinmo_normalize_backup_settings(array $settings): array {
         'users' => [
             'enabled' => (bool) ($settings['users']['enabled'] ?? $defaults['users']['enabled']),
             'keep' => min(200, max(1, $userKeep)),
+        ],
+        'storage' => [
+            'enabled' => (bool) ($settings['storage']['enabled'] ?? $defaults['storage']['enabled']),
+            'keep' => min(90, max(1, $storageKeep)),
+            'frequencyHours' => min(168, max(1, $frequencyHours)),
+            'lastRunAt' => (string) ($settings['storage']['lastRunAt'] ?? ''),
+            'lastStatus' => (string) ($settings['storage']['lastStatus'] ?? ''),
+            'lastFile' => (string) ($settings['storage']['lastFile'] ?? ''),
+            'token' => $token,
         ],
     ];
 }
@@ -380,6 +408,112 @@ function webinmo_rrmdir(string $path): void {
         @unlink($itemPath);
     }
     @rmdir($path);
+}
+
+function webinmo_backup_storage_zip(): array {
+    webinmo_ensure_storage();
+    if (!class_exists('ZipArchive')) {
+        return ['ok' => false, 'error' => 'ZipArchive no esta disponible en el servidor.'];
+    }
+
+    $filename = 'storage-' . date('Ymd-His') . '.zip';
+    $target = WEBINMO_STORAGE_BACKUPS_DIR . '/' . $filename;
+    $zip = new ZipArchive();
+    if ($zip->open($target, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        return ['ok' => false, 'error' => 'No se ha podido crear el ZIP de backup.'];
+    }
+
+    $root = realpath(WEBINMO_STORAGE_ROOT);
+    $backupRoot = realpath(WEBINMO_BACKUPS_DIR);
+    if (!$root) {
+        $zip->close();
+        return ['ok' => false, 'error' => 'No se ha encontrado la carpeta storage.'];
+    }
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+
+    foreach ($iterator as $item) {
+        $path = $item->getPathname();
+        $realPath = realpath($path);
+        if (!$realPath) {
+            continue;
+        }
+        if ($backupRoot && str_starts_with($realPath, $backupRoot)) {
+            continue;
+        }
+        if (str_ends_with($realPath, '.tmp')) {
+            continue;
+        }
+        $localName = 'storage/' . ltrim(str_replace('\\', '/', substr($realPath, strlen($root))), '/');
+        if ($item->isDir()) {
+            $zip->addEmptyDir($localName);
+            continue;
+        }
+        $zip->addFile($realPath, $localName);
+    }
+
+    $zip->close();
+    clearstatcache(true, $target);
+
+    return [
+        'ok' => true,
+        'file' => './storage/backups/storage/' . $filename,
+        'filename' => $filename,
+        'bytes' => file_exists($target) ? filesize($target) : 0,
+        'createdAt' => date(DATE_ATOM),
+    ];
+}
+
+function webinmo_prune_storage_backups(int $keep): void {
+    if (!is_dir(WEBINMO_STORAGE_BACKUPS_DIR)) {
+        return;
+    }
+    $files = glob(WEBINMO_STORAGE_BACKUPS_DIR . '/storage-*.zip') ?: [];
+    usort($files, static function (string $a, string $b): int {
+        return filemtime($b) <=> filemtime($a);
+    });
+    foreach (array_slice($files, max(1, $keep)) as $file) {
+        @unlink($file);
+    }
+}
+
+function webinmo_run_storage_backup(string $reason = 'scheduled'): array {
+    $settings = webinmo_load_backup_settings();
+    if (empty($settings['storage']['enabled'])) {
+        return ['ok' => false, 'error' => 'El backup de storage esta desactivado.'];
+    }
+
+    $result = webinmo_backup_storage_zip();
+    $settings['storage']['lastRunAt'] = date(DATE_ATOM);
+    $settings['storage']['lastStatus'] = ($result['ok'] ?? false) ? ('ok:' . $reason) : ('error:' . ($result['error'] ?? 'backup'));
+    if (!empty($result['file'])) {
+        $settings['storage']['lastFile'] = (string) $result['file'];
+    }
+    webinmo_save_backup_settings($settings);
+    if ($result['ok'] ?? false) {
+        webinmo_prune_storage_backups((int) ($settings['storage']['keep'] ?? 14));
+    }
+    return $result;
+}
+
+function webinmo_maybe_run_scheduled_storage_backup(): void {
+    if (!webinmo_is_admin()) {
+        return;
+    }
+    $settings = webinmo_load_backup_settings();
+    if (empty($settings['storage']['enabled'])) {
+        return;
+    }
+    $lastRunAt = (string) ($settings['storage']['lastRunAt'] ?? '');
+    $lastRun = $lastRunAt !== '' ? strtotime($lastRunAt) : false;
+    $frequency = max(1, (int) ($settings['storage']['frequencyHours'] ?? 24)) * 3600;
+    if ($lastRun !== false && (time() - $lastRun) < $frequency) {
+        return;
+    }
+    webinmo_run_storage_backup('auto');
 }
 
 function webinmo_load_users(): array {
@@ -557,6 +691,140 @@ function webinmo_find_public_proposal(string $slug): ?array {
         }
     }
     return null;
+}
+
+function webinmo_record_proposal_view(string $slug): ?array {
+    $slug = trim($slug);
+    if ($slug === '') {
+        return null;
+    }
+    $proposals = webinmo_load_proposals();
+    $updatedProposal = null;
+    foreach ($proposals as $index => $proposal) {
+        if ((string) ($proposal['slug'] ?? '') !== $slug) {
+            continue;
+        }
+        $now = date(DATE_ATOM);
+        $proposal['viewCount'] = (int) ($proposal['viewCount'] ?? 0) + 1;
+        $proposal['firstViewedAt'] = (string) ($proposal['firstViewedAt'] ?? $now);
+        $proposal['lastViewedAt'] = $now;
+        $recentViews = isset($proposal['recentViews']) && is_array($proposal['recentViews']) ? $proposal['recentViews'] : [];
+        array_unshift($recentViews, [
+            'at' => $now,
+            'ipHash' => substr(sha1((string) ($_SERVER['REMOTE_ADDR'] ?? '')), 0, 12),
+            'userAgent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 180),
+            'referer' => substr((string) ($_SERVER['HTTP_REFERER'] ?? ''), 0, 240),
+        ]);
+        $proposal['recentViews'] = array_slice($recentViews, 0, 20);
+        $proposals[$index] = $proposal;
+        $updatedProposal = $proposal;
+        break;
+    }
+    if ($updatedProposal && webinmo_save_proposals($proposals)) {
+        return $updatedProposal;
+    }
+    return $updatedProposal;
+}
+
+function webinmo_send_proposal_response_notification(array $proposal, string $action, string $message = ''): bool {
+    $statusText = $action === 'accepted' ? 'aceptada' : 'rechazada';
+    $projectName = (string) ($proposal['projectName'] ?? 'Presupuesto');
+    $clientName = (string) ($proposal['clientName'] ?? 'Cliente');
+    $slug = (string) ($proposal['slug'] ?? '');
+    $adminUrl = 'https://tupromocion.es/estimator/form.html?id=' . rawurlencode((string) ($proposal['id'] ?? ''));
+    $publicUrl = 'https://tupromocion.es/propuesta/' . rawurlencode($slug);
+    $subject = "Propuesta {$statusText}: {$projectName}";
+    $body = "La propuesta ha sido {$statusText}.\n\nCliente: {$clientName}\nProyecto: {$projectName}\nEnlace publico: {$publicUrl}\nEditar en Estimator: {$adminUrl}";
+    if ($message !== '') {
+        $body .= "\n\nMensaje del cliente:\n{$message}";
+    }
+
+    $recipients = array_values(array_unique(array_filter([
+        'info@tucasaen3d.es',
+        (string) ($proposal['preparedByEmail'] ?? ''),
+        (string) ($proposal['ctaEmail'] ?? ''),
+    ], static function (string $email): bool {
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    })));
+
+    if (!$recipients || !function_exists('mail')) {
+        return false;
+    }
+
+    $headers = "From: TuPromocion.es <info@tucasaen3d.es>\r\n";
+    $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+    return @mail(implode(',', $recipients), $subject, $body, $headers);
+}
+
+function webinmo_respond_to_public_proposal(string $slug, string $action, string $message = ''): array {
+    $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', trim($slug));
+    if ($slug === '') {
+        return ['ok' => false, 'error' => 'Slug requerido.'];
+    }
+    if (!in_array($action, ['accepted', 'rejected'], true)) {
+        return ['ok' => false, 'error' => 'Accion no valida.'];
+    }
+
+    $proposals = webinmo_load_proposals();
+    foreach ($proposals as $index => $proposal) {
+        if (!is_array($proposal) || (string) ($proposal['slug'] ?? '') !== $slug) {
+            continue;
+        }
+        $currentStatus = (string) ($proposal['status'] ?? '');
+        if (in_array($currentStatus, ['accepted', 'rejected'], true)) {
+            return [
+                'ok' => true,
+                'alreadyResponded' => true,
+                'status' => $currentStatus,
+                'respondedAt' => $proposal['respondedAt'] ?? null,
+            ];
+        }
+        $now = date(DATE_ATOM);
+        $proposal['status'] = $action;
+        $proposal['respondedAt'] = $now;
+        $proposal['updatedAt'] = $now;
+        $proposal['adminNotificationUnread'] = true;
+        $proposal['adminNotificationText'] = $action === 'accepted' ? 'Propuesta aceptada por el cliente.' : 'Propuesta rechazada por el cliente.';
+        if ($message !== '') {
+            $proposal['respondedMessage'] = $message;
+        }
+        $proposal['adminNotificationEmailSent'] = webinmo_send_proposal_response_notification($proposal, $action, $message);
+        $proposals[$index] = $proposal;
+        if (!webinmo_save_proposals($proposals)) {
+            return ['ok' => false, 'error' => 'No se ha podido guardar la respuesta.'];
+        }
+        return ['ok' => true, 'action' => $action, 'proposal' => $proposal];
+    }
+
+    return ['ok' => false, 'error' => 'Presupuesto no encontrado.'];
+}
+
+function webinmo_update_proposal_status(string $proposalId, string $status): array {
+    $proposalId = trim($proposalId);
+    $status = trim($status);
+    if ($proposalId === '' || !in_array($status, ['draft', 'sent', 'accepted', 'rejected', 'expired'], true)) {
+        return ['ok' => false, 'error' => 'Estado no valido.'];
+    }
+    $proposals = webinmo_load_proposals();
+    foreach ($proposals as $index => $proposal) {
+        if ((string) ($proposal['id'] ?? '') !== $proposalId) {
+            continue;
+        }
+        if (!webinmo_can_access_proposal($proposal)) {
+            return ['ok' => false, 'error' => 'No tienes permisos para cambiar este presupuesto.'];
+        }
+        $proposal['status'] = $status;
+        $proposal['updatedAt'] = date(DATE_ATOM);
+        if ($status === 'sent') {
+            $proposal['sentAt'] = (string) ($proposal['sentAt'] ?? $proposal['updatedAt']);
+        }
+        $proposals[$index] = $proposal;
+        if (!webinmo_save_proposals($proposals)) {
+            return ['ok' => false, 'error' => 'No se ha podido cambiar el estado.'];
+        }
+        return ['ok' => true];
+    }
+    return ['ok' => false, 'error' => 'Presupuesto no encontrado.'];
 }
 
 function webinmo_load_project(string $projectId): ?array {
@@ -842,6 +1110,8 @@ function webinmo_public_projects(): array {
 }
 
 function webinmo_bootstrap_payload(): array {
+    webinmo_maybe_run_scheduled_storage_backup();
+
     return [
         'clients' => webinmo_visible_clients(),
         'users' => webinmo_is_admin() ? webinmo_public_users() : [],

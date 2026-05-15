@@ -81,6 +81,7 @@ const Estimator = (() => {
     switch (String(status || "").toLowerCase()) {
       case "sent": return { label: "Enviada", tone: "sent" };
       case "accepted": return { label: "Aceptada", tone: "accepted" };
+      case "rejected": return { label: "Rechazada", tone: "rejected" };
       case "expired": return { label: "Caducada", tone: "expired" };
       default: return { label: "Borrador", tone: "draft" };
     }
@@ -112,6 +113,18 @@ const Estimator = (() => {
 
   async function saveProposal(proposal) {
     return api("/upsert_proposal.php", { method: "POST", body: { proposal } });
+  }
+
+  async function updateProposalStatus(id, status) {
+    return api("/update_proposal_status.php", { method: "POST", body: { id, status } });
+  }
+
+  async function runStorageBackup() {
+    return api("/run_storage_backup.php", { method: "POST", body: {} });
+  }
+
+  async function saveBackupSettings(settings) {
+    return api("/backup_settings.php", { method: "POST", body: { settings } });
   }
 
   async function deleteProposal(id) {
@@ -395,6 +408,9 @@ const Estimator = (() => {
     loadCatalog,
     saveCatalog,
     saveProposal,
+    updateProposalStatus,
+    runStorageBackup,
+    saveBackupSettings,
     deleteProposal,
     preparedByPresets,
     uploadAssetIfNeeded,
