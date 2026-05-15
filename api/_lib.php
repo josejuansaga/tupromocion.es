@@ -14,10 +14,15 @@ const WEBINMO_USER_BACKUPS_DIR = WEBINMO_BACKUPS_DIR . '/users';
 const WEBINMO_USERS_FILE = WEBINMO_STORAGE_ROOT . '/users.json';
 const WEBINMO_CLIENTS_FILE = WEBINMO_STORAGE_ROOT . '/clients.json';
 const WEBINMO_PROJECT_INDEX_FILE = WEBINMO_STORAGE_ROOT . '/project-index.json';
+const WEBINMO_PROPOSALS_FILE = WEBINMO_STORAGE_ROOT . '/proposals.json';
+const WEBINMO_PROPOSAL_LEADS_FILE = WEBINMO_STORAGE_ROOT . '/proposal-leads.json';
+const WEBINMO_PROPOSAL_LINE_PRESETS_FILE = WEBINMO_STORAGE_ROOT . '/proposal-line-presets.json';
+const WEBINMO_ESTIMATOR_CATALOG_FILE = WEBINMO_STORAGE_ROOT . '/estimator-catalog.json';
 const WEBINMO_ANALYTICS_FILE = WEBINMO_STORAGE_ROOT . '/analytics.json';
 const WEBINMO_LEADS_FILE = WEBINMO_STORAGE_ROOT . '/leads.json';
 const WEBINMO_BACKUP_SETTINGS_FILE = WEBINMO_STORAGE_ROOT . '/backup-settings.json';
 const WEBINMO_SESSION_KEY = 'webinmo_user';
+const WEBINMO_ESTIMATOR_SESSION_KEY = 'webinmo_estimator_until';
 
 function webinmo_respond(array $payload, int $status = 200): void {
     http_response_code($status);
@@ -73,6 +78,18 @@ function webinmo_ensure_storage(): void {
     if (!file_exists(WEBINMO_PROJECT_INDEX_FILE)) {
         webinmo_write_json(WEBINMO_PROJECT_INDEX_FILE, []);
     }
+    if (!file_exists(WEBINMO_PROPOSALS_FILE)) {
+        webinmo_write_json(WEBINMO_PROPOSALS_FILE, []);
+    }
+    if (!file_exists(WEBINMO_PROPOSAL_LEADS_FILE)) {
+        webinmo_write_json(WEBINMO_PROPOSAL_LEADS_FILE, []);
+    }
+    if (!file_exists(WEBINMO_PROPOSAL_LINE_PRESETS_FILE)) {
+        webinmo_write_json(WEBINMO_PROPOSAL_LINE_PRESETS_FILE, []);
+    }
+    if (!file_exists(WEBINMO_ESTIMATOR_CATALOG_FILE)) {
+        webinmo_write_json(WEBINMO_ESTIMATOR_CATALOG_FILE, webinmo_default_estimator_catalog());
+    }
     if (!file_exists(WEBINMO_ANALYTICS_FILE)) {
         webinmo_write_json(WEBINMO_ANALYTICS_FILE, []);
     }
@@ -121,6 +138,62 @@ function webinmo_project_path(string $projectId): string {
 
 function webinmo_project_assets_dir(string $projectId): string {
     return WEBINMO_ASSETS_DIR . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '', $projectId);
+}
+
+function webinmo_default_estimator_catalog(): array {
+    return [
+        [
+            'id' => 'estancias-interiores',
+            'name' => 'Estancias interiores',
+            'sub' => 'Tarifa base por imagen interior',
+            'color' => 'green',
+            'products' => [
+                ['id' => 'salon-comedor-cocina', 'name' => 'Salón - comedor - cocina', 'price' => 220, 'unit' => 'imagen', 'desc' => 'Vista conjunta de la zona principal. Precio + IVA - IRPF. 1ª mod. incluida.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'cocina', 'name' => 'Cocina', 'price' => 120, 'unit' => 'imagen', 'desc' => 'Imagen individual de cocina. Precio + IVA - IRPF. 1ª mod. incluida.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'dormitorio', 'name' => 'Dormitorio', 'price' => 120, 'unit' => 'imagen', 'desc' => 'Imagen individual de dormitorio. Precio + IVA - IRPF. 1ª mod. incluida.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'bano', 'name' => 'Baño', 'price' => 90, 'unit' => 'imagen', 'desc' => 'Imagen individual de baño. Precio + IVA - IRPF. 1ª mod. incluida.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+            ],
+        ],
+        [
+            'id' => 'packs-base',
+            'name' => 'Packs y escenas base',
+            'sub' => 'Soluciones rápidas para interiorismo y arquitectura',
+            'color' => 'orange',
+            'products' => [
+                ['id' => 'pack-interiorista', 'name' => 'Pack interiorista', 'price' => 420, 'unit' => 'pack', 'desc' => 'Salón comedor cocina + dormitorio principal + baño. Precio + IVA - IRPF. 1ª mod. incluida.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'exterior-vivienda-unifamiliar', 'name' => 'Exterior - vivienda unifamiliar', 'price' => 420, 'unit' => 'imagen', 'desc' => 'A partir de 420 €. Fachada exterior o vista principal.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'restaurante-local-fachada', 'name' => 'Restaurante / local comercial con fachada', 'price' => 420, 'unit' => 'imagen', 'desc' => 'A partir de 420 €. Escena comercial con fachada o acceso principal.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+            ],
+        ],
+        [
+            'id' => 'servicios-complementarios',
+            'name' => 'Servicios complementarios',
+            'sub' => 'Servicios del dossier comercial y presentación',
+            'color' => 'blue',
+            'products' => [
+                ['id' => 'tour-virtual-extra', 'name' => 'Tour virtual', 'price' => 0, 'unit' => 'extra', 'desc' => 'Suplemento orientativo: +50 % sobre el presupuesto base.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'tour-vr', 'name' => 'Tour virtual + experiencia inmersiva VR', 'price' => 0, 'unit' => 'proyecto', 'desc' => 'Precio a medida según alcance y dispositivo.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'video-animaciones', 'name' => 'Vídeo y animaciones', 'price' => 0, 'unit' => 'proyecto', 'desc' => 'Servicio audiovisual bajo presupuesto personalizado.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'integraciones-imagen', 'name' => 'Integraciones en imagen', 'price' => 0, 'unit' => 'imagen', 'desc' => 'Inserciones y composiciones especiales bajo presupuesto personalizado.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+                ['id' => 'ficha-digital-microsite', 'name' => 'Ficha digital / microsite', 'price' => 290, 'unit' => 'proyecto', 'desc' => 'Presentación online compartible del proyecto o promoción.', 'image' => '', 'technicalPdf' => '', 'technicalPdfThumbnail' => ''],
+            ],
+        ],
+    ];
+}
+
+function webinmo_slugify(string $value): string {
+    $value = trim($value);
+    if ($value === '') {
+        return '';
+    }
+    $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+    if (!is_string($normalized) || $normalized === '') {
+        $normalized = $value;
+    }
+    $slug = strtolower($normalized);
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+    $slug = trim((string) $slug, '-');
+    return substr($slug, 0, 120);
 }
 
 function webinmo_project_versions_path(string $projectId): string {
@@ -366,9 +439,222 @@ function webinmo_save_project_index(array $index): bool {
     return webinmo_write_json(WEBINMO_PROJECT_INDEX_FILE, array_values($index));
 }
 
+function webinmo_load_proposals(): array {
+    webinmo_ensure_storage();
+    $proposals = webinmo_read_json(WEBINMO_PROPOSALS_FILE, []);
+    return is_array($proposals) ? array_values(array_filter($proposals, 'is_array')) : [];
+}
+
+function webinmo_save_proposals(array $proposals): bool {
+    return webinmo_write_json(WEBINMO_PROPOSALS_FILE, array_values($proposals));
+}
+
+function webinmo_load_proposal_leads(): array {
+    webinmo_ensure_storage();
+    $leads = webinmo_read_json(WEBINMO_PROPOSAL_LEADS_FILE, []);
+    return is_array($leads) ? array_values(array_filter($leads, 'is_array')) : [];
+}
+
+function webinmo_save_proposal_leads(array $leads): bool {
+    return webinmo_write_json(WEBINMO_PROPOSAL_LEADS_FILE, array_values($leads));
+}
+
+function webinmo_visible_proposal_leads(): array {
+    $leads = webinmo_load_proposal_leads();
+    if (webinmo_is_admin()) {
+        usort($leads, static function (array $a, array $b): int {
+            return strcmp((string) ($b['updatedAt'] ?? ''), (string) ($a['updatedAt'] ?? ''));
+        });
+        return $leads;
+    }
+    $clientId = webinmo_current_client_id();
+    $visible = array_values(array_filter($leads, static function (array $lead) use ($clientId): bool {
+        return (string) ($lead['clientId'] ?? '') === $clientId;
+    }));
+    usort($visible, static function (array $a, array $b): int {
+        return strcmp((string) ($b['updatedAt'] ?? ''), (string) ($a['updatedAt'] ?? ''));
+    });
+    return $visible;
+}
+
+function webinmo_can_access_proposal_lead(array $lead): bool {
+    return webinmo_is_admin() || (string) ($lead['clientId'] ?? '') === webinmo_current_client_id();
+}
+
+function webinmo_load_proposal_line_presets(): array {
+    webinmo_ensure_storage();
+    $presets = webinmo_read_json(WEBINMO_PROPOSAL_LINE_PRESETS_FILE, []);
+    return is_array($presets) ? array_values(array_filter($presets, 'is_array')) : [];
+}
+
+function webinmo_save_proposal_line_presets(array $presets): bool {
+    return webinmo_write_json(WEBINMO_PROPOSAL_LINE_PRESETS_FILE, array_values($presets));
+}
+
+function webinmo_load_estimator_catalog(): array {
+    webinmo_ensure_storage();
+    $catalog = webinmo_read_json(WEBINMO_ESTIMATOR_CATALOG_FILE, webinmo_default_estimator_catalog());
+    return is_array($catalog) ? array_values(array_filter($catalog, 'is_array')) : webinmo_default_estimator_catalog();
+}
+
+function webinmo_save_estimator_catalog(array $catalog): bool {
+    return webinmo_write_json(WEBINMO_ESTIMATOR_CATALOG_FILE, array_values($catalog));
+}
+
+function webinmo_visible_proposal_line_presets(): array {
+    $presets = webinmo_load_proposal_line_presets();
+    if (webinmo_is_admin()) {
+        usort($presets, static function (array $a, array $b): int {
+            return strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''));
+        });
+        return $presets;
+    }
+    $clientId = webinmo_current_client_id();
+    $visible = array_values(array_filter($presets, static function (array $preset) use ($clientId): bool {
+        $owner = (string) ($preset['clientId'] ?? '');
+        return $owner === '' || $owner === $clientId;
+    }));
+    usort($visible, static function (array $a, array $b): int {
+        return strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''));
+    });
+    return $visible;
+}
+
+function webinmo_can_access_proposal_line_preset(array $preset): bool {
+    return webinmo_is_admin() || (string) ($preset['clientId'] ?? '') === '' || (string) ($preset['clientId'] ?? '') === webinmo_current_client_id();
+}
+
+function webinmo_can_access_proposal(array $proposal): bool {
+    return webinmo_is_admin() || (string) ($proposal['clientId'] ?? '') === webinmo_current_client_id();
+}
+
+function webinmo_visible_proposals(): array {
+    $proposals = webinmo_load_proposals();
+    if (webinmo_is_admin()) {
+        usort($proposals, static function (array $a, array $b): int {
+            return strcmp((string) ($b['updatedAt'] ?? ''), (string) ($a['updatedAt'] ?? ''));
+        });
+        return $proposals;
+    }
+    $clientId = webinmo_current_client_id();
+    $visible = array_values(array_filter($proposals, static function (array $proposal) use ($clientId): bool {
+        return (string) ($proposal['clientId'] ?? '') === $clientId;
+    }));
+    usort($visible, static function (array $a, array $b): int {
+        return strcmp((string) ($b['updatedAt'] ?? ''), (string) ($a['updatedAt'] ?? ''));
+    });
+    return $visible;
+}
+
+function webinmo_find_public_proposal(string $slug): ?array {
+    $slug = trim($slug);
+    if ($slug === '') {
+        return null;
+    }
+    foreach (webinmo_load_proposals() as $proposal) {
+        if ((string) ($proposal['slug'] ?? '') === $slug) {
+            return $proposal;
+        }
+    }
+    return null;
+}
+
 function webinmo_load_project(string $projectId): ?array {
     $project = webinmo_read_json(webinmo_project_path($projectId), null);
     return is_array($project) ? $project : null;
+}
+
+function webinmo_find_public_project_by_slug(string $slug): ?array {
+    $slug = webinmo_slugify($slug);
+    if ($slug === '') {
+        return null;
+    }
+    foreach (webinmo_load_project_index() as $meta) {
+        $project = webinmo_load_project((string) ($meta['id'] ?? ''));
+        if (!$project || (string) ($project['status'] ?? 'draft') !== 'published') {
+            continue;
+        }
+        $slugCandidates = array_filter([
+            (string) ($meta['slug'] ?? ''),
+            (string) ($project['slug'] ?? ''),
+            (string) ($project['state']['publicSlug'] ?? ''),
+            webinmo_project_preferred_slug($project),
+        ], static function ($value): bool {
+            return trim((string) $value) !== '';
+        });
+        foreach ($slugCandidates as $candidate) {
+            if (webinmo_slugify((string) $candidate) === $slug) {
+                return $project;
+            }
+        }
+    }
+    return null;
+}
+
+function webinmo_is_generic_project_name(string $value): bool {
+    $slug = webinmo_slugify($value);
+    return $slug === ''
+        || $slug === 'nueva-promocion'
+        || $slug === 'promocion-sin-nombre'
+        || $slug === 'proyecto-sin-titulo'
+        || $slug === 'viviendas-de-obra-nueva-pensadas-para-vivir-mejor';
+}
+
+function webinmo_project_preferred_slug(array $project): string {
+    $slug = webinmo_slugify(webinmo_build_project_slug_source($project));
+    if ($slug !== '') {
+        return $slug;
+    }
+    $state = isset($project['state']) && is_array($project['state']) ? $project['state'] : [];
+    return webinmo_slugify((string) ($project['slug'] ?? ($state['publicSlug'] ?? '')));
+}
+
+function webinmo_unique_public_slug(array $project, array $projects): string {
+    $base = webinmo_project_preferred_slug($project);
+    if ($base === '') {
+        $base = webinmo_slugify((string) ($project['id'] ?? 'promocion'));
+    }
+    $projectId = (string) ($project['id'] ?? '');
+    foreach ($projects as $otherProject) {
+        if ((string) ($otherProject['id'] ?? '') === $projectId) {
+            continue;
+        }
+        if (webinmo_project_preferred_slug($otherProject) === $base) {
+            return $base . '-' . substr($projectId, 0, 6);
+        }
+    }
+    return $base;
+}
+
+function webinmo_build_project_slug_source(array $project): string {
+    $state = isset($project['state']) && is_array($project['state']) ? $project['state'] : [];
+    $candidates = [
+        trim((string) ($state['seoTitle'] ?? '')),
+        trim((string) ($state['projectName'] ?? '')),
+        trim((string) ($project['name'] ?? '')),
+        trim((string) ($state['headline'] ?? '')),
+        trim((string) ($state['companyName'] ?? '')),
+    ];
+    $projectName = '';
+    foreach ($candidates as $candidate) {
+        if ($candidate !== '' && !webinmo_is_generic_project_name($candidate)) {
+            $projectName = $candidate;
+            break;
+        }
+    }
+    if ($projectName === '') {
+        foreach ($candidates as $candidate) {
+            if ($candidate !== '') {
+                $projectName = $candidate;
+                break;
+            }
+        }
+    }
+    $province = trim((string) ($state['province'] ?? ''));
+    $city = trim((string) ($state['city'] ?? ''));
+    return trim(implode(' ', array_filter([$projectName, $province, $city], static function ($value): bool {
+        return (string) $value !== '';
+    })));
 }
 
 function webinmo_load_all_projects(): array {
@@ -453,6 +739,28 @@ function webinmo_require_admin(): void {
     }
 }
 
+function webinmo_grant_estimator_access(): void {
+    $_SESSION[WEBINMO_ESTIMATOR_SESSION_KEY] = time() + 4 * 60 * 60;
+}
+
+function webinmo_has_estimator_access(): bool {
+    return webinmo_is_authenticated()
+        && webinmo_is_admin()
+        && (int) ($_SESSION[WEBINMO_ESTIMATOR_SESSION_KEY] ?? 0) > time();
+}
+
+function webinmo_require_estimator_access(): void {
+    webinmo_require_auth();
+    if (!webinmo_has_estimator_access()) {
+        webinmo_respond([
+            'ok' => false,
+            'authenticated' => true,
+            'estimatorAllowed' => false,
+            'error' => 'Acceso al estimator bloqueado. Entra desde el panel de administracion.',
+        ], 403);
+    }
+}
+
 function webinmo_current_client_id(): string {
     $user = webinmo_current_user();
     return (string) ($user['clientId'] ?? '');
@@ -501,14 +809,16 @@ function webinmo_public_projects(): array {
         return (string) ($project['status'] ?? 'draft') === 'published';
     }));
 
-    return array_map(static function (array $project) use ($clientsById): array {
+    return array_map(static function (array $project) use ($clientsById, $projects): array {
         $clientId = (string) ($project['clientId'] ?? '');
         $client = $clientsById[$clientId] ?? [];
         $state = is_array($project['state'] ?? null) ? $project['state'] : [];
+        $publicSlug = webinmo_unique_public_slug($project, $projects);
 
         return [
             'id' => (string) ($project['id'] ?? ''),
             'name' => (string) ($project['name'] ?? 'Promocion sin nombre'),
+            'slug' => $publicSlug,
             'status' => 'published',
             'updatedAt' => (string) ($project['updatedAt'] ?? ''),
             'createdAt' => (string) ($project['createdAt'] ?? ''),
@@ -518,6 +828,8 @@ function webinmo_public_projects(): array {
                 'projectName' => (string) ($state['projectName'] ?? ($project['name'] ?? '')),
                 'companyName' => (string) ($state['companyName'] ?? ''),
                 'headline' => (string) ($state['headline'] ?? ''),
+                'introText' => (string) ($state['introText'] ?? ''),
+                'cardLabel' => (string) ($state['cardLabel'] ?? ''),
                 'priceFrom' => (string) ($state['priceFrom'] ?? ''),
                 'locationName' => (string) ($state['locationName'] ?? ''),
                 'province' => (string) ($state['province'] ?? ''),
@@ -534,6 +846,9 @@ function webinmo_bootstrap_payload(): array {
         'clients' => webinmo_visible_clients(),
         'users' => webinmo_is_admin() ? webinmo_public_users() : [],
         'projects' => webinmo_visible_projects(),
+        'proposals' => webinmo_visible_proposals(),
+        'proposalLeads' => webinmo_visible_proposal_leads(),
+        'proposalLinePresets' => webinmo_visible_proposal_line_presets(),
         'analytics' => webinmo_visible_analytics(),
         'leads' => webinmo_visible_leads(),
         'currentUser' => webinmo_current_user_public(),
@@ -789,7 +1104,7 @@ function webinmo_delete_client(string $clientId): array {
     return ['ok' => true];
 }
 
-function webinmo_upsert_project(array $project): array {
+function webinmo_upsert_project(array $project, string $saveMode = 'manual'): array {
     $projectId = (string) ($project['id'] ?? '');
     if ($projectId === '') {
       return ['ok' => false, 'error' => 'La promocion no tiene identificador.'];
@@ -804,18 +1119,40 @@ function webinmo_upsert_project(array $project): array {
     if (!webinmo_can_access_project($project)) {
         return ['ok' => false, 'error' => 'No tienes permisos para guardar esta promocion.'];
     }
+    $slugBase = webinmo_build_project_slug_source($project);
+    $slug = webinmo_slugify($slugBase);
+    if ($slug === '') {
+        $slug = 'promocion-' . substr($projectId, 0, 8);
+    }
+    foreach (webinmo_load_project_index() as $entry) {
+        if ((string) ($entry['id'] ?? '') === $projectId) {
+            continue;
+        }
+        if ((string) ($entry['slug'] ?? '') === $slug) {
+            $slug .= '-' . substr($projectId, 0, 6);
+            break;
+        }
+    }
+    $project['slug'] = $slug;
+    if (!isset($project['state']) || !is_array($project['state'])) {
+        $project['state'] = [];
+    }
+    $project['state']['publicSlug'] = $slug;
     $path = webinmo_project_path($projectId);
     if (!webinmo_write_json($path, $project)) {
         return ['ok' => false, 'error' => 'No se ha podido guardar el archivo de la promocion.'];
     }
-    webinmo_record_project_version($project);
-    webinmo_record_project_backup($project);
+    if ($saveMode !== 'autosave') {
+        webinmo_record_project_version($project);
+        webinmo_record_project_backup($project);
+    }
 
     $index = webinmo_load_project_index();
     $meta = [
         'id' => $projectId,
         'clientId' => (string) ($project['clientId'] ?? ''),
         'name' => (string) ($project['name'] ?? 'Promocion sin nombre'),
+        'slug' => $slug,
         'status' => (string) ($project['status'] ?? 'draft'),
         'updatedAt' => (string) ($project['updatedAt'] ?? date(DATE_ATOM)),
         'createdAt' => (string) ($project['createdAt'] ?? date(DATE_ATOM)),
@@ -869,6 +1206,218 @@ function webinmo_delete_project(string $projectId): array {
     }
 
     webinmo_rrmdir(webinmo_project_assets_dir($projectId));
+    return ['ok' => true, 'project' => $project];
+}
+
+function webinmo_upsert_proposal(array $proposal): array {
+    $proposalId = (string) ($proposal['id'] ?? '');
+    if ($proposalId === '') {
+        return ['ok' => false, 'error' => 'El presupuesto no tiene identificador.'];
+    }
+    $slug = trim((string) ($proposal['slug'] ?? ''));
+    if ($slug === '') {
+        return ['ok' => false, 'error' => 'El presupuesto necesita un enlace o slug.'];
+    }
+    if (!preg_match('/^[a-z0-9-]+$/', $slug)) {
+        return ['ok' => false, 'error' => 'El slug solo puede contener letras, números y guiones.'];
+    }
+    if (!webinmo_is_admin()) {
+        $proposal['clientId'] = webinmo_current_client_id();
+    }
+    if (!webinmo_can_access_proposal($proposal)) {
+        return ['ok' => false, 'error' => 'No tienes permisos para guardar este presupuesto.'];
+    }
+
+    $proposals = webinmo_load_proposals();
+    foreach ($proposals as $entry) {
+        if ((string) ($entry['slug'] ?? '') === $slug && (string) ($entry['id'] ?? '') !== $proposalId) {
+            return ['ok' => false, 'error' => 'Ya existe otro presupuesto con ese enlace.'];
+        }
+    }
+
+    $now = date(DATE_ATOM);
+    $proposal['createdAt'] = (string) ($proposal['createdAt'] ?? $now);
+    $proposal['updatedAt'] = $now;
+
+    $updated = false;
+    foreach ($proposals as $index => $entry) {
+        if ((string) ($entry['id'] ?? '') !== $proposalId) {
+            continue;
+        }
+        $proposals[$index] = array_merge($entry, $proposal);
+        $updated = true;
+        break;
+    }
+    if (!$updated) {
+        array_unshift($proposals, $proposal);
+    }
+
+    if (!webinmo_save_proposals($proposals)) {
+        return ['ok' => false, 'error' => 'No se ha podido guardar el presupuesto.'];
+    }
+    return ['ok' => true];
+}
+
+function webinmo_delete_proposal(string $proposalId): array {
+    $proposalId = trim($proposalId);
+    if ($proposalId === '') {
+        return ['ok' => false, 'error' => 'Presupuesto no válido.'];
+    }
+    $proposals = webinmo_load_proposals();
+    $target = null;
+    foreach ($proposals as $proposal) {
+        if ((string) ($proposal['id'] ?? '') === $proposalId) {
+            $target = $proposal;
+            break;
+        }
+    }
+    if (!$target) {
+        return ['ok' => false, 'error' => 'Presupuesto no encontrado.'];
+    }
+    if (!webinmo_can_access_proposal($target)) {
+        return ['ok' => false, 'error' => 'No tienes permisos para borrar este presupuesto.'];
+    }
+    $proposals = array_values(array_filter($proposals, static function (array $proposal) use ($proposalId): bool {
+        return (string) ($proposal['id'] ?? '') !== $proposalId;
+    }));
+    if (!webinmo_save_proposals($proposals)) {
+        return ['ok' => false, 'error' => 'No se ha podido borrar el presupuesto.'];
+    }
+    return ['ok' => true];
+}
+
+function webinmo_upsert_proposal_lead(array $lead): array {
+    $leadId = trim((string) ($lead['id'] ?? ''));
+    if ($leadId === '') {
+        return ['ok' => false, 'error' => 'El lead no tiene identificador.'];
+    }
+    $lead['name'] = trim((string) ($lead['name'] ?? ''));
+    if ($lead['name'] === '') {
+        return ['ok' => false, 'error' => 'El lead necesita al menos un nombre.'];
+    }
+    if (!webinmo_is_admin()) {
+        $lead['clientId'] = webinmo_current_client_id();
+    }
+    if (!webinmo_can_access_proposal_lead($lead)) {
+        return ['ok' => false, 'error' => 'No tienes permisos para guardar este lead.'];
+    }
+    $now = date(DATE_ATOM);
+    $lead['clientId'] = (string) ($lead['clientId'] ?? '');
+    $lead['createdAt'] = (string) ($lead['createdAt'] ?? $now);
+    $lead['updatedAt'] = $now;
+    $leads = webinmo_load_proposal_leads();
+    $updated = false;
+    foreach ($leads as $index => $entry) {
+        if ((string) ($entry['id'] ?? '') !== $leadId) {
+            continue;
+        }
+        $leads[$index] = array_merge($entry, $lead);
+        $updated = true;
+        break;
+    }
+    if (!$updated) {
+        array_unshift($leads, $lead);
+    }
+    if (!webinmo_save_proposal_leads($leads)) {
+        return ['ok' => false, 'error' => 'No se ha podido guardar el lead.'];
+    }
+    return ['ok' => true];
+}
+
+function webinmo_delete_proposal_lead(string $leadId): array {
+    $leadId = trim($leadId);
+    if ($leadId === '') {
+        return ['ok' => false, 'error' => 'Lead no válido.'];
+    }
+    $leads = webinmo_load_proposal_leads();
+    $target = null;
+    foreach ($leads as $lead) {
+        if ((string) ($lead['id'] ?? '') === $leadId) {
+            $target = $lead;
+            break;
+        }
+    }
+    if (!$target) {
+        return ['ok' => false, 'error' => 'Lead no encontrado.'];
+    }
+    if (!webinmo_can_access_proposal_lead($target)) {
+        return ['ok' => false, 'error' => 'No tienes permisos para borrar este lead.'];
+    }
+    $leads = array_values(array_filter($leads, static function (array $lead) use ($leadId): bool {
+        return (string) ($lead['id'] ?? '') !== $leadId;
+    }));
+    if (!webinmo_save_proposal_leads($leads)) {
+        return ['ok' => false, 'error' => 'No se ha podido borrar el lead.'];
+    }
+    return ['ok' => true];
+}
+
+function webinmo_upsert_proposal_line_preset(array $preset): array {
+    $presetId = trim((string) ($preset['id'] ?? ''));
+    if ($presetId === '') {
+        return ['ok' => false, 'error' => 'La línea no tiene identificador.'];
+    }
+    $preset['title'] = trim((string) ($preset['title'] ?? ''));
+    if ($preset['title'] === '') {
+        return ['ok' => false, 'error' => 'La línea necesita un título.'];
+    }
+    if (!webinmo_is_admin() && !empty($preset['clientId']) && (string) $preset['clientId'] !== webinmo_current_client_id()) {
+        return ['ok' => false, 'error' => 'No puedes asignar esta línea a otro cliente.'];
+    }
+    if (!webinmo_can_access_proposal_line_preset($preset)) {
+        return ['ok' => false, 'error' => 'No tienes permisos para guardar esta línea.'];
+    }
+    $now = date(DATE_ATOM);
+    if (!webinmo_is_admin()) {
+        $preset['clientId'] = webinmo_current_client_id();
+    }
+    $preset['clientId'] = (string) ($preset['clientId'] ?? '');
+    $preset['createdAt'] = (string) ($preset['createdAt'] ?? $now);
+    $preset['updatedAt'] = $now;
+    $presets = webinmo_load_proposal_line_presets();
+    $updated = false;
+    foreach ($presets as $index => $entry) {
+        if ((string) ($entry['id'] ?? '') !== $presetId) {
+            continue;
+        }
+        $presets[$index] = array_merge($entry, $preset);
+        $updated = true;
+        break;
+    }
+    if (!$updated) {
+        array_unshift($presets, $preset);
+    }
+    if (!webinmo_save_proposal_line_presets($presets)) {
+        return ['ok' => false, 'error' => 'No se ha podido guardar la línea.'];
+    }
+    return ['ok' => true];
+}
+
+function webinmo_delete_proposal_line_preset(string $presetId): array {
+    $presetId = trim($presetId);
+    if ($presetId === '') {
+        return ['ok' => false, 'error' => 'Línea no válida.'];
+    }
+    $presets = webinmo_load_proposal_line_presets();
+    $target = null;
+    foreach ($presets as $preset) {
+        if ((string) ($preset['id'] ?? '') === $presetId) {
+            $target = $preset;
+            break;
+        }
+    }
+    if (!$target) {
+        return ['ok' => false, 'error' => 'Línea no encontrada.'];
+    }
+    if (!webinmo_can_access_proposal_line_preset($target)) {
+        return ['ok' => false, 'error' => 'No tienes permisos para borrar esta línea.'];
+    }
+    $presets = array_values(array_filter($presets, static function (array $preset) use ($presetId): bool {
+        return (string) ($preset['id'] ?? '') !== $presetId;
+    }));
+    if (!webinmo_save_proposal_line_presets($presets)) {
+        return ['ok' => false, 'error' => 'No se ha podido borrar la línea.'];
+    }
     return ['ok' => true];
 }
 
@@ -1006,6 +1555,13 @@ function webinmo_store_asset(string $projectId, string $hint, string $dataUrl): 
     $safeProjectId = preg_replace('/[^a-zA-Z0-9_-]/', '', $projectId);
     $relPath = './storage/assets/' . $safeProjectId . '/' . $filename;
 
+    if (in_array($ext, ['jpg', 'png', 'webp'], true)) {
+        webinmo_optimize_image($path, $mime, 2200, 2200);
+        if (webinmo_should_watermark_asset($projectId, $hint, $mime)) {
+            webinmo_apply_watermark($path, $mime);
+        }
+    }
+
     // Generar miniatura para imágenes (no PDF ni SVG)
     if (in_array($ext, ['jpg', 'png', 'webp'], true) && function_exists('imagecreatefromjpeg')) {
         $thumbFilename = $safeHint . '-' . $hash . '-thumb.jpg';
@@ -1016,14 +1572,217 @@ function webinmo_store_asset(string $projectId, string $hint, string $dataUrl): 
     return ['ok' => true, 'path' => $relPath];
 }
 
+function webinmo_store_uploaded_asset(string $projectId, string $hint, array $file): array {
+    $tmpPath = (string) ($file['tmp_name'] ?? '');
+    if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+        return ['ok' => false, 'error' => 'Archivo no valido.'];
+    }
+
+    $mime = strtolower((string) (@mime_content_type($tmpPath) ?: ''));
+    $ext = match ($mime) {
+        'image/jpeg', 'image/jpg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/svg+xml', 'text/plain' => 'svg',
+        'application/pdf' => 'pdf',
+        default => '',
+    };
+
+    if ($ext === '') {
+        $originalName = strtolower((string) ($file['name'] ?? ''));
+        if (str_ends_with($originalName, '.svg')) {
+            $ext = 'svg';
+            $mime = 'image/svg+xml';
+        }
+    }
+
+    if ($ext === '') {
+        return ['ok' => false, 'error' => 'Tipo de archivo no soportado.'];
+    }
+
+    $bytes = @file_get_contents($tmpPath);
+    if ($bytes === false || $bytes === '') {
+        return ['ok' => false, 'error' => 'No se ha podido leer el archivo.'];
+    }
+
+    $dir = webinmo_project_assets_dir($projectId);
+    if (!is_dir($dir) && !mkdir($dir, 0777, true) && !is_dir($dir)) {
+        return ['ok' => false, 'error' => 'No se ha podido crear la carpeta de archivos.'];
+    }
+
+    $safeHint = preg_replace('/[^a-zA-Z0-9_-]/', '-', strtolower($hint)) ?: 'asset';
+    $hash = substr(sha1($bytes), 0, 16);
+    $filename = $safeHint . '-' . $hash . '.' . $ext;
+    $path = $dir . '/' . $filename;
+
+    if (!@move_uploaded_file($tmpPath, $path)) {
+        if (file_put_contents($path, $bytes, LOCK_EX) === false) {
+            return ['ok' => false, 'error' => 'No se ha podido guardar el archivo.'];
+        }
+    }
+
+    $safeProjectId = preg_replace('/[^a-zA-Z0-9_-]/', '', $projectId);
+    $relPath = './storage/assets/' . $safeProjectId . '/' . $filename;
+
+    if (in_array($ext, ['jpg', 'png', 'webp'], true)) {
+        webinmo_optimize_image($path, $mime, 2200, 2200);
+        if (webinmo_should_watermark_asset($projectId, $hint, $mime)) {
+            webinmo_apply_watermark($path, $mime);
+        }
+    }
+
+    if (in_array($ext, ['jpg', 'png', 'webp'], true) && function_exists('imagecreatefromjpeg')) {
+        $thumbFilename = $safeHint . '-' . $hash . '-thumb.jpg';
+        $thumbPath = $dir . '/' . $thumbFilename;
+        webinmo_generate_thumb($path, $thumbPath, $mime, 480);
+    }
+
+    return ['ok' => true, 'path' => $relPath];
+}
+
+function webinmo_load_image_resource(string $path, string $mime) {
+    return match ($mime) {
+        'image/jpeg', 'image/jpg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($path) : false,
+        'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($path) : false,
+        'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
+        default => false,
+    };
+}
+
+function webinmo_save_image_resource($image, string $path, string $mime): bool {
+    return match ($mime) {
+        'image/jpeg', 'image/jpg' => function_exists('imagejpeg') ? @imagejpeg($image, $path, 82) : false,
+        'image/png' => function_exists('imagepng') ? @imagepng($image, $path, 7) : false,
+        'image/webp' => function_exists('imagewebp') ? @imagewebp($image, $path, 80) : false,
+        default => false,
+    };
+}
+
+function webinmo_prepare_canvas(int $width, int $height, string $mime) {
+    if (!function_exists('imagecreatetruecolor')) {
+        return false;
+    }
+    $canvas = imagecreatetruecolor($width, $height);
+    if (!$canvas) {
+        return false;
+    }
+    if (in_array($mime, ['image/png', 'image/webp'], true)) {
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+        imagefill($canvas, 0, 0, $transparent);
+        return $canvas;
+    }
+    imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+    return $canvas;
+}
+
+function webinmo_optimize_image(string $path, string $mime, int $maxW, int $maxH): void {
+    $img = webinmo_load_image_resource($path, $mime);
+    if (!$img) {
+        return;
+    }
+
+    $w = imagesx($img);
+    $h = imagesy($img);
+    if ($w <= 0 || $h <= 0) {
+        imagedestroy($img);
+        return;
+    }
+
+    $ratio = min($maxW / $w, $maxH / $h, 1);
+    $nw = max(1, (int) round($w * $ratio));
+    $nh = max(1, (int) round($h * $ratio));
+
+    if ($ratio >= 1) {
+        webinmo_save_image_resource($img, $path, $mime);
+        imagedestroy($img);
+        return;
+    }
+
+    $optimized = webinmo_prepare_canvas($nw, $nh, $mime);
+    if (!$optimized) {
+        imagedestroy($img);
+        return;
+    }
+
+    imagecopyresampled($optimized, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+    webinmo_save_image_resource($optimized, $path, $mime);
+    imagedestroy($img);
+    imagedestroy($optimized);
+}
+
+function webinmo_should_watermark_asset(string $projectId, string $hint, string $mime): bool {
+    if (!in_array($mime, ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'], true)) {
+        return false;
+    }
+    if ($projectId === 'estimator-catalog') {
+        return false;
+    }
+    $hint = strtolower(trim($hint));
+    if ($hint === '' || str_contains($hint, 'logo') || str_contains($hint, 'plan') || str_contains($hint, 'dossier') || str_contains($hint, 'pdf')) {
+        return false;
+    }
+    return str_contains($hint, 'render')
+        || str_contains($hint, 'cover')
+        || str_contains($hint, 'social')
+        || str_contains($hint, 'tour');
+}
+
+function webinmo_apply_watermark(string $path, string $mime): void {
+    $base = webinmo_load_image_resource($path, $mime);
+    if (!$base) {
+        return;
+    }
+
+    $watermarkPath = __DIR__ . '/../img/tupromocion-icon.png';
+    if (!file_exists($watermarkPath) || !function_exists('imagecreatefrompng')) {
+        imagedestroy($base);
+        return;
+    }
+
+    $watermark = @imagecreatefrompng($watermarkPath);
+    if (!$watermark) {
+        imagedestroy($base);
+        return;
+    }
+
+    $baseW = imagesx($base);
+    $baseH = imagesy($base);
+    $wmW = imagesx($watermark);
+    $wmH = imagesy($watermark);
+    if ($baseW <= 0 || $baseH <= 0 || $wmW <= 0 || $wmH <= 0) {
+        imagedestroy($watermark);
+        imagedestroy($base);
+        return;
+    }
+
+    $targetW = max(120, min(260, (int) round($baseW * 0.14)));
+    $ratio = $targetW / $wmW;
+    $targetH = max(40, (int) round($wmH * $ratio));
+    $overlay = webinmo_prepare_canvas($targetW, $targetH, 'image/png');
+    if (!$overlay) {
+        imagedestroy($watermark);
+        imagedestroy($base);
+        return;
+    }
+
+    imagecopyresampled($overlay, $watermark, 0, 0, 0, 0, $targetW, $targetH, $wmW, $wmH);
+    $margin = max(18, (int) round(min($baseW, $baseH) * 0.025));
+    $destX = max(0, $baseW - $targetW - $margin);
+    $destY = max(0, $baseH - $targetH - $margin);
+    imagealphablending($base, true);
+    imagecopy($base, $overlay, $destX, $destY, 0, 0, $targetW, $targetH);
+    webinmo_save_image_resource($base, $path, $mime);
+
+    imagedestroy($overlay);
+    imagedestroy($watermark);
+    imagedestroy($base);
+}
+
 function webinmo_generate_thumb(string $src, string $dst, string $mime, int $maxW): void {
     if (file_exists($dst)) return;
-    $img = match ($mime) {
-        'image/jpeg', 'image/jpg' => @imagecreatefromjpeg($src),
-        'image/png'               => @imagecreatefrompng($src),
-        'image/webp'              => @imagecreatefromwebp($src),
-        default                   => false,
-    };
+    $img = webinmo_load_image_resource($src, $mime);
     if (!$img) return;
     $w = imagesx($img);
     $h = imagesy($img);
@@ -1031,8 +1790,11 @@ function webinmo_generate_thumb(string $src, string $dst, string $mime, int $max
     $ratio = $maxW / $w;
     $nw = $maxW;
     $nh = (int) round($h * $ratio);
-    $thumb = imagecreatetruecolor($nw, $nh);
-    // Fondo blanco para PNGs con transparencia
+    $thumb = webinmo_prepare_canvas($nw, $nh, 'image/jpeg');
+    if (!$thumb) {
+        imagedestroy($img);
+        return;
+    }
     imagefill($thumb, 0, 0, imagecolorallocate($thumb, 255, 255, 255));
     imagecopyresampled($thumb, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
     imagejpeg($thumb, $dst, 78);

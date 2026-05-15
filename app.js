@@ -5,15 +5,18 @@ function safeRandomUUID() {
   return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 11);
 }
 
-const PUBLIC_PROJECT_ID = new URLSearchParams(window.location.search).get("promo") || "";
-const PUBLIC_LANGUAGE = new URLSearchParams(window.location.search).get("lang") || "es";
+const URL_QUERY = new URLSearchParams(window.location.search);
+const PATH_PROJECT_MATCH = window.location.pathname.match(/^\/promocion\/([a-z0-9-]+)\/?$/i);
+const PUBLIC_PROJECT_ID = URL_QUERY.get("promo") || "";
+const PUBLIC_PROJECT_SLUG = URL_QUERY.get("promo_slug") || (PATH_PROJECT_MATCH ? decodeURIComponent(PATH_PROJECT_MATCH[1]) : "");
+const PUBLIC_LANGUAGE = URL_QUERY.get("lang") || "es";
 const IS_ADMIN_ROUTE = /\/admin(?:\/|\/index\.(?:html|php))?$/i.test(window.location.pathname);
-const IS_PUBLIC_HOME_ROUTE = !IS_ADMIN_ROUTE && !PUBLIC_PROJECT_ID;
+const IS_PUBLIC_HOME_ROUTE = !IS_ADMIN_ROUTE && !PUBLIC_PROJECT_ID && !PUBLIC_PROJECT_SLUG;
 
 function createDefaultTranslation() {
   return {
-    headline: "Viviendas de obra nueva pensadas para vivir mejor.",
-    introText: "Un proyecto residencial contemporaneo con imagen cuidada, buena ubicacion y espacios pensados para el dia a dia.",
+    headline: "Promoción residencial lista para presentar.",
+    introText: "Ficha digital con imágenes, datos principales y material comercial preparado para compartir.",
     youtubeUrl: "",
     qualities: [
       "Cocinas equipadas con electrodomesticos integrados",
@@ -36,13 +39,15 @@ const defaultState = {
   projectId: "",
   projectName: "",
   projectStatus: "draft",
+  publicSlug: "",
   clientId: "",
   designVariant: "mediterranea",
   companyName: "Residencial Atlas",
   languages: ["es"],
-  headline: "Viviendas de obra nueva pensadas para vivir mejor.",
-  introText: "Un proyecto residencial contemporaneo con imagen cuidada, buena ubicacion y espacios pensados para el dia a dia.",
+  headline: "Promoción residencial lista para presentar.",
+  introText: "Ficha digital con imágenes, datos principales y material comercial preparado para compartir.",
   priceFrom: "",
+  cardLabel: "Obra nueva",
   locationName: "Calle Mayor 18, Madrid",
   province: "",
   city: "",
@@ -88,14 +93,24 @@ const defaultState = {
   ],
 };
 
-const API_BASE = new URL(IS_ADMIN_ROUTE ? "../api/" : "./api/", window.location.href).pathname.replace(/\/$/, "");
+const API_BASE = "/api";
 let state = structuredClone(defaultState);
-let db = { clients: [], users: [], projects: [], analytics: {}, leads: [], currentUser: null, backupSettings: {} };
+let db = { clients: [], users: [], projects: [], proposals: [], proposalLeads: [], proposalLinePresets: [], analytics: {}, leads: [], currentUser: null, backupSettings: {} };
 let currentView = "auth";
 let activeAdminSection = "promotions";
 let selectedUserId = "";
+let selectedProposalId = "";
+let proposalDraft = null;
+let selectedProposalLeadId = "";
+let proposalLeadDraft = null;
+let selectedProposalLinePresetId = "";
+let proposalLinePresetDraft = null;
+let activeProposalSubview = "builder";
 let activeEditorLanguage = "es";
 let autosaveIntervalId = null;
+let autosaveInFlight = false;
+let editorAssetWorkCount = 0;
+let lastEditorMutationAt = 0;
 let clientSearchTerm = "";
 let promotionSearchTerm = "";
 let contactProjectFilter = "";
@@ -104,6 +119,173 @@ let projectVersionsCache = [];
 let publicProjectsCatalog = [];
 let projectBackupsCache = [];
 let userBackupsCache = [];
+
+const proposalHubEntries = [
+  {
+    group: "Propuestas reales",
+    items: [
+      {
+        title: "Viviendas Elche",
+        description: "Presupuesto online preparado por José Juan.",
+        href: "/propuesta/viviendas-elche",
+        type: "Propuesta real",
+      },
+      {
+        title: "Edificio Elda",
+        description: "Presupuesto online preparado por Noelia.",
+        href: "/propuesta/edificio-elda",
+        type: "Propuesta real",
+      },
+    ],
+  },
+  {
+    group: "Plantillas demo",
+    items: [
+      {
+        title: "Demo promotora",
+        description: "Modelo para promociones inmobiliarias y obra nueva.",
+        href: "/propuesta/demo-promotora",
+        type: "Demo",
+      },
+      {
+        title: "Demo interiorista",
+        description: "Modelo para interiorismo y presentación al cliente.",
+        href: "/propuesta/demo-interiorista",
+        type: "Demo",
+      },
+      {
+        title: "Demo chalet",
+        description: "Modelo premium para villas y vivienda unifamiliar.",
+        href: "/propuesta/demo-chalet",
+        type: "Demo",
+      },
+    ],
+  },
+  {
+    group: "Páginas comerciales",
+    items: [
+      {
+        title: "Ficha de ejemplo",
+        description: "Ejemplo real de cómo queda una ficha digital publicada.",
+        href: "/promocion/edificio-castelar-alicante-elda",
+        type: "Demo pública",
+      },
+      {
+        title: "Publica tu promoción",
+        description: "Página comercial para promotoras, agencias e inmobiliarias.",
+        href: "/publica-tu-promocion",
+        type: "Servicio",
+      },
+      {
+        title: "Interioristas",
+        description: "Página comercial para estudios de interiorismo.",
+        href: "/interioristas",
+        type: "Servicio",
+      },
+    ],
+  },
+];
+
+const proposalPreparedByPresets = {
+  jose: {
+    name: "José Juan Sánchez García",
+    role: "Tu Casa en 3D",
+    email: "info@tucasaen3d.es",
+    phone: "+34 634 55 70 33",
+  },
+  noelia: {
+    name: "Noelia Cocchi",
+    role: "Tu Casa en 3D",
+    email: "arquitectura@tucasaen3d.es",
+    phone: "+34 634 56 67 18",
+  },
+};
+
+function createProposalDraft() {
+  const preset = proposalPreparedByPresets.jose;
+  const now = new Date().toISOString().slice(0, 10);
+  return {
+    id: safeRandomUUID(),
+    leadId: "",
+    clientId: isAdminUser() ? "" : (db.currentUser?.clientId || ""),
+    slug: "",
+    status: "draft",
+    proposalDate: now,
+    validUntil: "",
+    preparedByPreset: "jose",
+    preparedByName: preset.name,
+    preparedByRole: preset.role,
+    preparedByEmail: preset.email,
+    preparedByPhone: preset.phone,
+    clientName: "",
+    projectName: "",
+    projectType: "Promotora / Obra nueva",
+    brandPrimary: "Tu Casa en 3D",
+    brandSecondary: "Propuesta comercial online",
+    currency: "EUR",
+    introText: "",
+    servicesIncluded: [],
+    priceItems: [{ concept: "", quantity: 1, unitPrice: 0 }],
+    priceSummary: [],
+    totalText: "",
+    discounts: [],
+    bonusItems: [],
+    examples: [],
+    usageContexts: [],
+    timeline: [],
+    requiredDocuments: [],
+    paymentTerms: [],
+    exclusions: [],
+    ctaEmail: preset.email,
+    ctaPhone: preset.phone,
+    acceptLabel: "Aceptar propuesta y reservar producción",
+    acceptSubject: "",
+    callLabel: "",
+    callText: "",
+    replyLabel: "",
+    replySubject: "",
+    adjustLabel: "",
+    adjustSubject: "",
+    printLabel: "Imprimir / Guardar PDF",
+    nextStepTitle: "",
+    nextStepText: "",
+    secondaryCtaHref: "/",
+    secondaryCtaLabel: "Volver a TuPromoción.es",
+  };
+}
+
+function createProposalLeadDraft() {
+  return {
+    id: safeRandomUUID(),
+    clientId: isAdminUser() ? "" : (db.currentUser?.clientId || ""),
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    projectType: "",
+    notes: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function createProposalLinePresetDraft() {
+  return {
+    id: safeRandomUUID(),
+    clientId: isAdminUser() ? "" : (db.currentUser?.clientId || ""),
+    title: "",
+    concept: "",
+    description: "",
+    quantity: 1,
+    unitPrice: 0,
+    exampleUrl: "",
+    exampleImage: "",
+    exampleImages: [],
+    serviceText: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 const els = {
   publicWorkspace: document.querySelector("#publicWorkspace"),
@@ -134,6 +316,30 @@ const els = {
   contactsList: document.querySelector("#contactsList"),
   contactProjectFilter: document.querySelector("#contactProjectFilter"),
   exportContactsBtn: document.querySelector("#exportContactsBtn"),
+  proposalsPanel: document.querySelector("#proposalsPanel"),
+  proposalsHub: document.querySelector("#proposalsHub"),
+  proposalsList: document.querySelector("#proposalsList"),
+  proposalEditor: document.querySelector("#proposalEditor"),
+  newProposalBtn: document.querySelector("#newProposalBtn"),
+  saveProposalBtn: document.querySelector("#saveProposalBtn"),
+  openProposalBtn: document.querySelector("#openProposalBtn"),
+  copyProposalBtn: document.querySelector("#copyProposalBtn"),
+  deleteProposalBtn: document.querySelector("#deleteProposalBtn"),
+  proposalSubviewTabs: Array.from(document.querySelectorAll("[data-proposal-subview]")),
+  proposalBuilderSection: document.querySelector("#proposalBuilderSection"),
+  proposalSavedSection: document.querySelector("#proposalSavedSection"),
+  proposalLeadsSection: document.querySelector("#proposalLeadsSection"),
+  proposalPresetsSection: document.querySelector("#proposalPresetsSection"),
+  proposalLeadsList: document.querySelector("#proposalLeadsList"),
+  proposalLeadEditor: document.querySelector("#proposalLeadEditor"),
+  newProposalLeadBtn: document.querySelector("#newProposalLeadBtn"),
+  saveProposalLeadBtn: document.querySelector("#saveProposalLeadBtn"),
+  deleteProposalLeadBtn: document.querySelector("#deleteProposalLeadBtn"),
+  proposalLinePresetsList: document.querySelector("#proposalLinePresetsList"),
+  proposalLinePresetEditor: document.querySelector("#proposalLinePresetEditor"),
+  newProposalLinePresetBtn: document.querySelector("#newProposalLinePresetBtn"),
+  saveProposalLinePresetBtn: document.querySelector("#saveProposalLinePresetBtn"),
+  deleteProposalLinePresetBtn: document.querySelector("#deleteProposalLinePresetBtn"),
   adminTabs: Array.from(document.querySelectorAll("[data-admin-tab]")),
   usersPanel: document.querySelector("#usersPanel"),
   usersList: document.querySelector("#usersList"),
@@ -186,6 +392,7 @@ const els = {
   headline:         document.querySelector("#headline"),
   introText:        document.querySelector("#introText"),
   priceFrom:        document.querySelector("#priceFrom"),
+  cardLabel:        document.querySelector("#cardLabel"),
   locationName:     document.querySelector("#locationName"),
   province:         document.querySelector("#province"),
   city:             document.querySelector("#city"),
@@ -212,7 +419,6 @@ const els = {
   downloadZipBtn:   document.querySelector("#downloadZipBtn"),
   downloadSiteBtn:  document.querySelector("#downloadSiteBtn"),
   downloadDossierBtn: document.querySelector("#downloadDossierBtn"),
-  assetsLibrary: document.querySelector("#assetsLibrary"),
   projectVersions: document.querySelector("#projectVersions"),
   projectBackups: document.querySelector("#projectBackups"),
   createProjectBackupBtn: document.querySelector("#createProjectBackupBtn"),
@@ -225,8 +431,8 @@ init();
 // ─── init ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  if (PUBLIC_PROJECT_ID) {
-    await renderPublicProjectFromUrl(PUBLIC_PROJECT_ID);
+  if (PUBLIC_PROJECT_ID || PUBLIC_PROJECT_SLUG) {
+    await renderPublicProjectFromUrl();
     return;
   }
   if (IS_PUBLIC_HOME_ROUTE) {
@@ -325,10 +531,16 @@ function renderLanguageTabs() {
 // ─── bindings ──────────────────────────────────────────────────────────────────
 
 function bindTopLevel() {
+  els.editorWorkspace?.addEventListener("input", () => {
+    if (currentView === "editor") markEditorMutated();
+  });
+  els.editorWorkspace?.addEventListener("change", () => {
+    if (currentView === "editor") markEditorMutated();
+  });
   [
     ["projectName", "projectName"], ["projectStatus", "projectStatus"],
     ["designVariant", "designVariant"], ["companyName", "companyName"],
-    ["priceFrom", "priceFrom"], ["locationName", "locationName"],
+    ["priceFrom", "priceFrom"], ["cardLabel", "cardLabel"], ["locationName", "locationName"],
     ["province", "province"], ["city", "city"],
     ["mapsUrl", "mapsUrl"], ["mapsEmbedUrl", "mapsEmbedUrl"], ["virtualTourUrl", "virtualTourUrl"],
     ["companyLocation", "companyLocation"], ["companyWebsite", "companyWebsite"],
@@ -434,6 +646,10 @@ function bindTopLevel() {
   els.logoutBtn?.addEventListener("click", () => logout());
   els.adminTabs.forEach((button) => {
     button.addEventListener("click", () => {
+      if (button.dataset.adminTab === "proposals") {
+        window.location.href = "/api/enter_estimator.php?next=/estimator/";
+        return;
+      }
       activeAdminSection = button.dataset.adminTab || "control";
       renderAll();
     });
@@ -463,7 +679,7 @@ function bindTopLevel() {
 }
 
 function bindActions() {
-  els.addFloorBtn?.addEventListener("click", () => { state.floors.push(createFloor()); renderAll(); });
+  els.addFloorBtn?.addEventListener("click", () => { state.floors.push(createFloor()); markEditorMutated(); renderAll(); });
   els.newClientBtn?.addEventListener("click", () => createClient());
   els.deleteClientBtn?.addEventListener("click", () => deleteActiveClient());
   els.saveClientBtn?.addEventListener("click", () => saveClientFromState());
@@ -476,6 +692,51 @@ function bindActions() {
   els.saveBackupSettingsBtn?.addEventListener("click", () => { void saveBackupSettings(); });
   els.createUserBackupBtn?.addEventListener("click", () => { void createEntityBackup("user", selectedUserId); });
   els.exportContactsBtn?.addEventListener("click", () => exportContactsCsv());
+  els.newProposalBtn?.addEventListener("click", () => {
+    proposalDraft = normalizeProposalRecord(createProposalDraft());
+    selectedProposalId = proposalDraft.id;
+    renderProposalsPanel();
+  });
+  els.saveProposalBtn?.addEventListener("click", () => { void saveProposalRecord(); });
+  els.openProposalBtn?.addEventListener("click", () => {
+    const draft = ensureProposalDraftLoaded();
+    if (!draft.slug || !getProposalById(draft.id)) {
+      window.alert("Guarda primero el presupuesto para generar el enlace.");
+      return;
+    }
+    window.open(getProposalPublicUrl(draft.slug), "_blank");
+  });
+  els.copyProposalBtn?.addEventListener("click", () => {
+    const draft = ensureProposalDraftLoaded();
+    if (!draft.slug || !getProposalById(draft.id)) {
+      window.alert("Guarda primero el presupuesto para generar el enlace.");
+      return;
+    }
+    void copyAbsoluteUrl(getProposalPublicPath(draft.slug));
+  });
+  els.deleteProposalBtn?.addEventListener("click", () => { void deleteProposalRecord(); });
+  els.proposalSubviewTabs?.forEach((button) => {
+    button.addEventListener("click", () => {
+      activeProposalSubview = button.dataset.proposalSubview || "builder";
+      renderProposalsPanel();
+    });
+  });
+  els.newProposalLeadBtn?.addEventListener("click", () => {
+    activeProposalSubview = "leads";
+    proposalLeadDraft = normalizeProposalLeadRecord(createProposalLeadDraft());
+    selectedProposalLeadId = proposalLeadDraft.id;
+    renderProposalsPanel();
+  });
+  els.saveProposalLeadBtn?.addEventListener("click", () => { void saveProposalLeadRecord(); });
+  els.deleteProposalLeadBtn?.addEventListener("click", () => { void deleteProposalLeadRecord(); });
+  els.newProposalLinePresetBtn?.addEventListener("click", () => {
+    activeProposalSubview = "presets";
+    proposalLinePresetDraft = normalizeProposalLinePresetRecord(createProposalLinePresetDraft());
+    selectedProposalLinePresetId = proposalLinePresetDraft.id;
+    renderProposalsPanel();
+  });
+  els.saveProposalLinePresetBtn?.addEventListener("click", () => { void saveProposalLinePresetRecord(); });
+  els.deleteProposalLinePresetBtn?.addEventListener("click", () => { void deleteProposalLinePresetRecord(); });
 
   els.saveProjectBtn?.addEventListener("click", () => {
     normalizeStateUrlsInPlace(state);
@@ -550,6 +811,7 @@ function renderAll() {
   els.headline.value        = translation.headline || "";
   els.introText.value       = translation.introText || "";
   els.priceFrom.value       = state.priceFrom;
+  if (els.cardLabel) els.cardLabel.value = state.cardLabel || "";
   els.locationName.value    = state.locationName;
   if (els.province) els.province.value = state.province;
   if (els.city) els.city.value = state.city;
@@ -582,12 +844,12 @@ function renderAll() {
   renderManagementUi();
   renderUsersPanel();
   renderBackupSettingsPanel();
+  renderProposalsPanel();
   renderAdminSections();
   renderClientProjectsPanel();
   syncDesignPicker();
   renderValidation();
   renderFloors();
-  renderAssetsLibrary();
   renderProjectVersions();
   renderProjectBackups();
   renderPreview();
@@ -606,6 +868,1270 @@ function renderAdminSections() {
   if (activeAdminSection === "contacts") {
     renderContactsPanel();
   }
+}
+
+function getAbsoluteSiteUrl(pathname = "/") {
+  const cleanPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return new URL(cleanPath, window.location.origin).toString();
+}
+
+function sanitizeProposalSlug(value) {
+  return slugify(String(value || "").trim()).slice(0, 120);
+}
+
+function getProposalById(proposalId) {
+  return db.proposals.find((proposal) => proposal.id === proposalId) || null;
+}
+
+function getProposalLeadById(leadId) {
+  return db.proposalLeads.find((lead) => lead.id === leadId) || null;
+}
+
+function getProposalLinePresetById(presetId) {
+  return db.proposalLinePresets.find((preset) => preset.id === presetId) || null;
+}
+
+function getProposalPublicPath(slug) {
+  return `/propuesta/${sanitizeProposalSlug(slug)}`;
+}
+
+function getProposalPublicUrl(slug) {
+  return getAbsoluteSiteUrl(getProposalPublicPath(slug));
+}
+
+function toProposalLines(value) {
+  return Array.isArray(value) ? value.map((item) => String(item || "").trim()).filter(Boolean) : [];
+}
+
+function toProposalRows(value, mapper) {
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object").map(mapper) : [];
+}
+
+function parseProposalNumber(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const normalized = String(value || "").replace(",", ".").replace(/[^\d.-]/g, "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeProposalRecord(rawProposal = {}) {
+  const draft = createProposalDraft();
+  const proposal = { ...draft, ...(rawProposal && typeof rawProposal === "object" ? rawProposal : {}) };
+  proposal.id = String(proposal.id || draft.id);
+  proposal.leadId = String(proposal.leadId || "");
+  proposal.clientId = String(proposal.clientId || "");
+  proposal.slug = sanitizeProposalSlug(proposal.slug || "");
+  proposal.status = String(proposal.status || "draft");
+  proposal.proposalDate = String(proposal.proposalDate || draft.proposalDate);
+  proposal.validUntil = String(proposal.validUntil || "");
+  proposal.preparedByPreset = String(proposal.preparedByPreset || "manual");
+  proposal.preparedByName = String(proposal.preparedByName || "");
+  proposal.preparedByRole = String(proposal.preparedByRole || "");
+  proposal.preparedByEmail = String(proposal.preparedByEmail || "");
+  proposal.preparedByPhone = String(proposal.preparedByPhone || "");
+  proposal.clientName = String(proposal.clientName || "");
+  proposal.projectName = String(proposal.projectName || "");
+  proposal.projectType = String(proposal.projectType || "");
+  proposal.brandPrimary = String(proposal.brandPrimary || "Tu Casa en 3D");
+  proposal.brandSecondary = String(proposal.brandSecondary || "Propuesta comercial online");
+  proposal.currency = String(proposal.currency || "EUR");
+  proposal.introText = String(proposal.introText || "");
+  proposal.servicesIncluded = toProposalLines(proposal.servicesIncluded);
+  proposal.timeline = toProposalLines(proposal.timeline);
+  proposal.requiredDocuments = toProposalLines(proposal.requiredDocuments);
+  proposal.paymentTerms = toProposalLines(proposal.paymentTerms);
+  proposal.exclusions = toProposalLines(proposal.exclusions);
+  proposal.usageContexts = toProposalLines(proposal.usageContexts);
+  proposal.priceItems = toProposalRows(proposal.priceItems, (item) => {
+    const quantity = parseProposalNumber(item.quantity ?? 1) || 1;
+    const unitPrice = parseProposalNumber(item.unitPrice ?? 0);
+    return {
+      concept: String(item.concept || ""),
+      quantity,
+      unitPrice,
+      subtotal: quantity * unitPrice,
+    };
+  });
+  proposal.priceSummary = toProposalRows(proposal.priceSummary, (item) => ({
+    label: String(item.label || ""),
+    valueText: String(item.valueText || ""),
+    isTotal: Boolean(item.isTotal),
+  }));
+  proposal.discounts = toProposalRows(proposal.discounts, (item) => ({
+    badge: String(item.badge || "Descuento"),
+    title: String(item.title || ""),
+    text: String(item.text || ""),
+    valueText: String(item.valueText || ""),
+    discountLabel: String(item.discountLabel || "Bonificación"),
+    discountText: String(item.discountText || ""),
+    totalText: String(item.totalText || "Incluido"),
+  }));
+  proposal.bonusItems = toProposalRows(proposal.bonusItems, (item) => ({
+    badge: String(item.badge || "Bonus"),
+    title: String(item.title || ""),
+    text: String(item.text || ""),
+    valueText: String(item.valueText || ""),
+    discountLabel: String(item.discountLabel || "Bonificación"),
+    discountText: String(item.discountText || ""),
+    totalText: String(item.totalText || "Incluido"),
+  }));
+  proposal.examples = toProposalRows(proposal.examples, (item) => ({
+    image: String(item.image || ""),
+    title: String(item.title || ""),
+    text: String(item.text || ""),
+  }));
+  proposal.total = proposal.priceItems.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+  proposal.totalText = String(proposal.totalText || "");
+  proposal.vatNote = String(proposal.vatNote || "+ IVA");
+  proposal.ctaEmail = String(proposal.ctaEmail || "");
+  proposal.ctaPhone = String(proposal.ctaPhone || "");
+  proposal.acceptLabel = String(proposal.acceptLabel || "Aceptar propuesta y reservar producción");
+  proposal.acceptSubject = String(proposal.acceptSubject || "");
+  proposal.callLabel = String(proposal.callLabel || "");
+  proposal.callText = String(proposal.callText || "");
+  proposal.replyLabel = String(proposal.replyLabel || "");
+  proposal.replySubject = String(proposal.replySubject || "");
+  proposal.adjustLabel = String(proposal.adjustLabel || "");
+  proposal.adjustSubject = String(proposal.adjustSubject || "");
+  proposal.printLabel = String(proposal.printLabel || "Imprimir / Guardar PDF");
+  proposal.nextStepTitle = String(proposal.nextStepTitle || "");
+  proposal.nextStepText = String(proposal.nextStepText || "");
+  proposal.secondaryCtaHref = String(proposal.secondaryCtaHref || "/");
+  proposal.secondaryCtaLabel = String(proposal.secondaryCtaLabel || "Volver a TuPromoción.es");
+  proposal.createdAt = String(proposal.createdAt || new Date().toISOString());
+  proposal.updatedAt = String(proposal.updatedAt || proposal.createdAt);
+  return proposal;
+}
+
+function normalizeProposalLeadRecord(rawLead = {}) {
+  const draft = createProposalLeadDraft();
+  return {
+    ...draft,
+    ...(rawLead && typeof rawLead === "object" ? rawLead : {}),
+    id: String(rawLead?.id || draft.id),
+    clientId: String(rawLead?.clientId || draft.clientId || ""),
+    name: String(rawLead?.name || ""),
+    company: String(rawLead?.company || ""),
+    email: String(rawLead?.email || ""),
+    phone: String(rawLead?.phone || ""),
+    projectType: String(rawLead?.projectType || ""),
+    notes: String(rawLead?.notes || ""),
+    createdAt: String(rawLead?.createdAt || draft.createdAt),
+    updatedAt: String(rawLead?.updatedAt || draft.updatedAt),
+  };
+}
+
+function normalizeProposalLinePresetRecord(rawPreset = {}) {
+  const draft = createProposalLinePresetDraft();
+  return {
+    ...draft,
+    ...(rawPreset && typeof rawPreset === "object" ? rawPreset : {}),
+    id: String(rawPreset?.id || draft.id),
+    clientId: String(rawPreset?.clientId || draft.clientId || ""),
+    title: String(rawPreset?.title || ""),
+    concept: String(rawPreset?.concept || ""),
+    description: String(rawPreset?.description || ""),
+    quantity: parseProposalNumber(rawPreset?.quantity ?? 1) || 1,
+    unitPrice: parseProposalNumber(rawPreset?.unitPrice ?? 0),
+    exampleUrl: String(rawPreset?.exampleUrl || ""),
+    exampleImage: String(rawPreset?.exampleImage || ""),
+    exampleImages: Array.isArray(rawPreset?.exampleImages)
+      ? rawPreset.exampleImages.map((image) => String(image || "").trim()).filter(Boolean)
+      : (rawPreset?.exampleImage ? [String(rawPreset.exampleImage)] : []),
+    serviceText: String(rawPreset?.serviceText || ""),
+    createdAt: String(rawPreset?.createdAt || draft.createdAt),
+    updatedAt: String(rawPreset?.updatedAt || draft.updatedAt),
+  };
+}
+
+function ensureProposalDraftLoaded() {
+  if (selectedProposalId) {
+    const selected = getProposalById(selectedProposalId);
+    if (selected) {
+      proposalDraft = normalizeProposalRecord(selected);
+      return proposalDraft;
+    }
+  }
+  if (proposalDraft?.id) {
+    proposalDraft = normalizeProposalRecord(proposalDraft);
+    return proposalDraft;
+  }
+  if (db.proposals.length) {
+    selectedProposalId = String(db.proposals[0].id || "");
+    proposalDraft = normalizeProposalRecord(db.proposals[0]);
+    return proposalDraft;
+  }
+  proposalDraft = normalizeProposalRecord(createProposalDraft());
+  selectedProposalId = proposalDraft.id;
+  return proposalDraft;
+}
+
+function ensureProposalLeadDraftLoaded() {
+  if (selectedProposalLeadId) {
+    const selected = getProposalLeadById(selectedProposalLeadId);
+    if (selected) {
+      proposalLeadDraft = normalizeProposalLeadRecord(selected);
+      return proposalLeadDraft;
+    }
+  }
+  if (proposalLeadDraft?.id) {
+    proposalLeadDraft = normalizeProposalLeadRecord(proposalLeadDraft);
+    return proposalLeadDraft;
+  }
+  if (db.proposalLeads.length) {
+    selectedProposalLeadId = String(db.proposalLeads[0].id || "");
+    proposalLeadDraft = normalizeProposalLeadRecord(db.proposalLeads[0]);
+    return proposalLeadDraft;
+  }
+  proposalLeadDraft = normalizeProposalLeadRecord(createProposalLeadDraft());
+  selectedProposalLeadId = proposalLeadDraft.id;
+  return proposalLeadDraft;
+}
+
+function ensureProposalLinePresetDraftLoaded() {
+  if (selectedProposalLinePresetId) {
+    const selected = getProposalLinePresetById(selectedProposalLinePresetId);
+    if (selected) {
+      proposalLinePresetDraft = normalizeProposalLinePresetRecord(selected);
+      return proposalLinePresetDraft;
+    }
+  }
+  if (proposalLinePresetDraft?.id) {
+    proposalLinePresetDraft = normalizeProposalLinePresetRecord(proposalLinePresetDraft);
+    return proposalLinePresetDraft;
+  }
+  if (db.proposalLinePresets.length) {
+    selectedProposalLinePresetId = String(db.proposalLinePresets[0].id || "");
+    proposalLinePresetDraft = normalizeProposalLinePresetRecord(db.proposalLinePresets[0]);
+    return proposalLinePresetDraft;
+  }
+  proposalLinePresetDraft = normalizeProposalLinePresetRecord(createProposalLinePresetDraft());
+  selectedProposalLinePresetId = proposalLinePresetDraft.id;
+  return proposalLinePresetDraft;
+}
+
+function createProposalRowButton(label, action, index, itemType) {
+  return `<button class="secondary-btn secondary-btn--compact" type="button" data-proposal-action="${escapeAttr(action)}" data-proposal-index="${index}" data-proposal-item-type="${escapeAttr(itemType)}">${escapeHtml(label)}</button>`;
+}
+
+function renderProposalArrayEditor(title, itemType, items, fields) {
+  return `
+    <article class="proposal-editor-block">
+      <div class="proposal-editor-block__head">
+        <h4>${escapeHtml(title)}</h4>
+        <button class="primary-btn primary-btn--compact" type="button" data-proposal-action="add-row" data-proposal-item-type="${escapeAttr(itemType)}">+ Añadir</button>
+      </div>
+      <div class="proposal-row-stack">
+        ${items.length ? items.map((item, index) => `
+          <div class="proposal-row-editor">
+            <div class="proposal-inline-grid proposal-inline-grid--${Math.min(fields.length, 3)}">
+              ${fields.map((field) => `
+                <label class="field ${field.type === "textarea" ? "field--full" : ""}">
+                  <span>${escapeHtml(field.label)}</span>
+                  ${field.type === "textarea"
+                    ? `<textarea rows="${field.rows || 3}" data-proposal-list="${escapeAttr(itemType)}" data-proposal-index="${index}" data-proposal-field="${escapeAttr(field.key)}" placeholder="${escapeAttr(field.placeholder || "")}">${escapeHtml(item?.[field.key] ?? "")}</textarea>`
+                    : `<input type="${escapeAttr(field.type || "text")}" value="${escapeAttr(item?.[field.key] ?? "")}" data-proposal-list="${escapeAttr(itemType)}" data-proposal-index="${index}" data-proposal-field="${escapeAttr(field.key)}" placeholder="${escapeAttr(field.placeholder || "")}" />`}
+                </label>
+              `).join("")}
+            </div>
+            <div class="proposal-row-editor__actions">
+              ${createProposalRowButton("Quitar", "remove-row", index, itemType)}
+            </div>
+          </div>
+        `).join("") : `<div class="dashboard-empty">Todavía no hay elementos en este bloque.</div>`}
+      </div>
+    </article>
+  `;
+}
+
+function renderProposalList() {
+  if (!els.proposalsList) return;
+  const proposals = [...db.proposals].sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  els.proposalsList.innerHTML = `
+    <div class="proposal-manager__head">
+      <h3>Presupuestos guardados</h3>
+      <p>${proposals.length} ${proposals.length === 1 ? "presupuesto" : "presupuestos"}</p>
+    </div>
+    <div class="proposal-records">
+      ${proposals.length ? proposals.map((proposal) => {
+        const active = proposal.id === selectedProposalId || proposal.id === proposalDraft?.id;
+        return `
+          <button class="proposal-record-card${active ? " is-active" : ""}" type="button" data-select-proposal="${escapeAttr(proposal.id)}">
+            <strong>${escapeHtml(proposal.projectName || "Propuesta sin título")}</strong>
+            <span>${escapeHtml(proposal.clientName || "Cliente pendiente")}</span>
+            <small>${escapeHtml(proposal.projectType || "")}</small>
+            <small>${escapeHtml(proposal.slug || "")}</small>
+          </button>
+        `;
+      }).join("") : `<div class="dashboard-empty">Aún no hay presupuestos guardados.</div>`}
+    </div>
+  `;
+
+  els.proposalsList.querySelectorAll("[data-select-proposal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedProposalId = button.dataset.selectProposal || "";
+      proposalDraft = normalizeProposalRecord(getProposalById(selectedProposalId) || createProposalDraft());
+      renderProposalsPanel();
+    });
+  });
+}
+
+function renderProposalLeadsManager() {
+  if (!els.proposalLeadsList || !els.proposalLeadEditor) return;
+  const draft = ensureProposalLeadDraftLoaded();
+  const leads = [...db.proposalLeads].sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  els.proposalLeadsList.innerHTML = leads.length ? leads.map((lead) => `
+    <button class="proposal-record-card${lead.id === selectedProposalLeadId ? " is-active" : ""}" type="button" data-select-proposal-lead="${escapeAttr(lead.id)}">
+      <strong>${escapeHtml(lead.name || "Lead")}</strong>
+      <span>${escapeHtml(lead.company || "Sin empresa")}</span>
+      <small>${escapeHtml(lead.projectType || "")}</small>
+    </button>
+  `).join("") : `<div class="dashboard-empty">Todavía no hay leads de presupuesto.</div>`;
+  els.proposalLeadEditor.innerHTML = `
+    <div class="proposal-editor-grid">
+      <label class="field"><span>Nombre</span><input type="text" value="${escapeAttr(draft.name)}" data-proposal-lead-field="name" /></label>
+      <label class="field"><span>Empresa</span><input type="text" value="${escapeAttr(draft.company)}" data-proposal-lead-field="company" /></label>
+      <label class="field"><span>Email</span><input type="email" value="${escapeAttr(draft.email)}" data-proposal-lead-field="email" /></label>
+      <label class="field"><span>Teléfono</span><input type="text" value="${escapeAttr(draft.phone)}" data-proposal-lead-field="phone" /></label>
+      <label class="field"><span>Tipo de proyecto</span><input type="text" value="${escapeAttr(draft.projectType)}" data-proposal-lead-field="projectType" placeholder="Promotora, interiorismo, reforma..." /></label>
+      <label class="field"><span>Notas</span><textarea rows="4" data-proposal-lead-field="notes">${escapeHtml(draft.notes)}</textarea></label>
+    </div>
+  `;
+  els.proposalLeadsList.querySelectorAll("[data-select-proposal-lead]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedProposalLeadId = button.dataset.selectProposalLead || "";
+      proposalLeadDraft = normalizeProposalLeadRecord(getProposalLeadById(selectedProposalLeadId) || createProposalLeadDraft());
+      renderProposalLeadsManager();
+      renderProposalEditor();
+    });
+  });
+  els.proposalLeadEditor.querySelectorAll("[data-proposal-lead-field]").forEach((input) => {
+    const eventName = input instanceof HTMLTextAreaElement ? "input" : "input";
+    input.addEventListener(eventName, () => {
+      proposalLeadDraft[input.dataset.proposalLeadField] = input.value;
+      proposalLeadDraft = normalizeProposalLeadRecord(proposalLeadDraft);
+    });
+  });
+}
+
+function renderProposalLinePresetsManager() {
+  if (!els.proposalLinePresetsList || !els.proposalLinePresetEditor) return;
+  const draft = ensureProposalLinePresetDraftLoaded();
+  const presets = [...db.proposalLinePresets].sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
+  els.proposalLinePresetsList.innerHTML = presets.length ? presets.map((preset) => `
+    <button class="proposal-record-card${preset.id === selectedProposalLinePresetId ? " is-active" : ""}" type="button" data-select-proposal-line-preset="${escapeAttr(preset.id)}">
+      <strong>${escapeHtml(preset.title || "Línea")}</strong>
+      <span>${escapeHtml(preset.concept || "")}</span>
+      <small>${escapeHtml(preset.unitPrice ? `${preset.unitPrice} EUR` : "Sin precio")}</small>
+    </button>
+  `).join("") : `<div class="dashboard-empty">Todavía no hay líneas guardadas.</div>`;
+  els.proposalLinePresetEditor.innerHTML = `
+    <div class="proposal-editor-grid">
+      <label class="field"><span>Título</span><input type="text" value="${escapeAttr(draft.title)}" data-proposal-line-preset-field="title" /></label>
+      <label class="field"><span>Concepto</span><input type="text" value="${escapeAttr(draft.concept)}" data-proposal-line-preset-field="concept" /></label>
+      <label class="field"><span>Cantidad</span><input type="number" value="${escapeAttr(draft.quantity)}" data-proposal-line-preset-field="quantity" /></label>
+      <label class="field"><span>Precio unitario</span><input type="number" value="${escapeAttr(draft.unitPrice)}" data-proposal-line-preset-field="unitPrice" /></label>
+      <label class="field"><span>Texto de servicio</span><input type="text" value="${escapeAttr(draft.serviceText)}" data-proposal-line-preset-field="serviceText" placeholder="Texto para servicios incluidos" /></label>
+      <label class="field"><span>Link de ejemplo</span><input type="url" value="${escapeAttr(draft.exampleUrl)}" data-proposal-line-preset-field="exampleUrl" /></label>
+      <label class="field"><span>Imagen de ejemplo</span><input type="url" value="${escapeAttr(draft.exampleImage)}" data-proposal-line-preset-field="exampleImage" /></label>
+      <label class="field"><span>Descripción</span><textarea rows="4" data-proposal-line-preset-field="description">${escapeHtml(draft.description)}</textarea></label>
+    </div>
+  `;
+  els.proposalLinePresetsList.querySelectorAll("[data-select-proposal-line-preset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedProposalLinePresetId = button.dataset.selectProposalLinePreset || "";
+      proposalLinePresetDraft = normalizeProposalLinePresetRecord(getProposalLinePresetById(selectedProposalLinePresetId) || createProposalLinePresetDraft());
+      renderProposalLinePresetsManager();
+      renderProposalEditor();
+    });
+  });
+  els.proposalLinePresetEditor.querySelectorAll("[data-proposal-line-preset-field]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const key = input.dataset.proposalLinePresetField;
+      proposalLinePresetDraft[key] = input.type === "number" ? parseProposalNumber(input.value) : input.value;
+      proposalLinePresetDraft = normalizeProposalLinePresetRecord(proposalLinePresetDraft);
+    });
+  });
+  decorateProposalLinePresetImages();
+}
+
+function decorateProposalLinePresetImages() {
+  if (!els.proposalLinePresetEditor || !proposalLinePresetDraft) return;
+  const imageField = els.proposalLinePresetEditor.querySelector('[data-proposal-line-preset-field="exampleImage"]')?.closest("label");
+  if (!imageField) return;
+  imageField.hidden = true;
+
+  let gallery = els.proposalLinePresetEditor.querySelector(".proposal-preset-images");
+  if (!gallery) {
+    gallery = document.createElement("div");
+    gallery.className = "proposal-preset-images";
+    imageField.insertAdjacentElement("afterend", gallery);
+  }
+
+  gallery.innerHTML = `
+    <div class="proposal-preset-images__head">
+      <span>Imágenes de ejemplo</span>
+      <label class="secondary-btn secondary-btn--compact proposal-upload-btn">
+        Subir imágenes
+        <input type="file" accept="image/*" multiple data-proposal-line-preset-upload hidden />
+      </label>
+    </div>
+    <div class="proposal-preset-images__grid">
+      ${(proposalLinePresetDraft.exampleImages || []).length ? proposalLinePresetDraft.exampleImages.map((image, index) => `
+        <article class="proposal-preset-image-card">
+          <img src="${escapeAttr(image)}" alt="Imagen de ejemplo ${index + 1}" />
+          <button class="icon-btn" type="button" data-remove-proposal-preset-image="${index}">Quitar</button>
+        </article>
+      `).join("") : `<div class="dashboard-empty">Todavía no hay imágenes de ejemplo.</div>`}
+    </div>
+  `;
+
+  gallery.querySelectorAll("[data-remove-proposal-preset-image]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.removeProposalPresetImage || -1);
+      if (index < 0) return;
+      proposalLinePresetDraft.exampleImages = (proposalLinePresetDraft.exampleImages || []).filter((_, imageIndex) => imageIndex !== index);
+      proposalLinePresetDraft.exampleImage = proposalLinePresetDraft.exampleImages[0] || "";
+      proposalLinePresetDraft = normalizeProposalLinePresetRecord(proposalLinePresetDraft);
+      renderProposalLinePresetsManager();
+    });
+  });
+
+  const uploadInput = gallery.querySelector("[data-proposal-line-preset-upload]");
+  uploadInput?.addEventListener("change", async () => {
+    const files = Array.from(uploadInput.files || []);
+    if (!files.length) return;
+    const newImages = (await Promise.all(files.map((file) => compressImage(file, 1600, 0.84)))).filter(Boolean);
+    proposalLinePresetDraft.exampleImages = [...(proposalLinePresetDraft.exampleImages || []), ...newImages];
+    proposalLinePresetDraft.exampleImage = proposalLinePresetDraft.exampleImages[0] || "";
+    proposalLinePresetDraft = normalizeProposalLinePresetRecord(proposalLinePresetDraft);
+    uploadInput.value = "";
+    renderProposalLinePresetsManager();
+  });
+}
+
+function renderProposalEditor() {
+  if (!els.proposalEditor) return;
+  const draft = ensureProposalDraftLoaded();
+  const clients = getUiClients();
+  const proposalLeads = [...db.proposalLeads].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  const linePresets = [...db.proposalLinePresets].sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
+  const priceSummary = Array.isArray(draft.priceSummary) ? draft.priceSummary : [];
+  els.proposalEditor.innerHTML = `
+    <div class="proposal-manager__head">
+      <h3>${escapeHtml(draft.projectName || "Nuevo presupuesto")}</h3>
+      <p>Rellena la propuesta, guárdala y comparte el enlace.</p>
+    </div>
+
+    <div class="proposal-editor-grid">
+      <article class="proposal-editor-block">
+        <h4>Datos principales</h4>
+        <div class="proposal-inline-grid proposal-inline-grid--3">
+          <label class="field">
+            <span>Lead de presupuesto</span>
+            <select data-proposal-field="leadId">
+              <option value="">Sin lead vinculado</option>
+              ${proposalLeads.map((lead) => `<option value="${escapeAttr(lead.id)}" ${lead.id === draft.leadId ? "selected" : ""}>${escapeHtml(lead.name || "Lead")} · ${escapeHtml(lead.company || "Sin empresa")}</option>`).join("")}
+            </select>
+          </label>
+          <label class="field">
+            <span>Cliente</span>
+            <select data-proposal-field="clientId">
+              <option value="">Sin asignar</option>
+              ${clients.map((client) => `<option value="${escapeAttr(client.id)}" ${client.id === draft.clientId ? "selected" : ""}>${escapeHtml(client.name || "Cliente")}</option>`).join("")}
+            </select>
+          </label>
+          <label class="field">
+            <span>Nombre cliente</span>
+            <input type="text" value="${escapeAttr(draft.clientName)}" data-proposal-field="clientName" placeholder="Promotora ejemplo" />
+          </label>
+          <label class="field">
+            <span>Estado</span>
+            <select data-proposal-field="status">
+              <option value="draft" ${draft.status === "draft" ? "selected" : ""}>Borrador</option>
+              <option value="sent" ${draft.status === "sent" ? "selected" : ""}>Enviada</option>
+              <option value="accepted" ${draft.status === "accepted" ? "selected" : ""}>Aceptada</option>
+              <option value="expired" ${draft.status === "expired" ? "selected" : ""}>Caducada</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Proyecto</span>
+            <input type="text" value="${escapeAttr(draft.projectName)}" data-proposal-field="projectName" placeholder="Residencial Marina Sol" />
+          </label>
+          <label class="field">
+            <span>Tipo de proyecto</span>
+            <input type="text" value="${escapeAttr(draft.projectType)}" data-proposal-field="projectType" placeholder="Promotora / Obra nueva" />
+          </label>
+          <label class="field">
+            <span>Slug / enlace</span>
+            <input type="text" value="${escapeAttr(draft.slug)}" data-proposal-field="slug" placeholder="residencial-marina-sol" />
+          </label>
+          <label class="field">
+            <span>Fecha propuesta</span>
+            <input type="date" value="${escapeAttr(draft.proposalDate)}" data-proposal-field="proposalDate" />
+          </label>
+          <label class="field">
+            <span>Válida hasta</span>
+            <input type="date" value="${escapeAttr(draft.validUntil)}" data-proposal-field="validUntil" />
+          </label>
+          <label class="field">
+            <span>Total visible</span>
+            <input type="text" value="${escapeAttr(draft.totalText)}" data-proposal-field="totalText" placeholder="1.400 € + IVA" />
+          </label>
+        </div>
+      </article>
+
+      <article class="proposal-editor-block">
+        <h4>Preparado por</h4>
+        <div class="proposal-inline-grid proposal-inline-grid--3">
+          <label class="field">
+            <span>Plantilla</span>
+            <select data-proposal-field="preparedByPreset">
+              <option value="jose" ${draft.preparedByPreset === "jose" ? "selected" : ""}>José Juan</option>
+              <option value="noelia" ${draft.preparedByPreset === "noelia" ? "selected" : ""}>Noelia</option>
+              <option value="manual" ${draft.preparedByPreset === "manual" ? "selected" : ""}>Manual</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Nombre</span>
+            <input type="text" value="${escapeAttr(draft.preparedByName)}" data-proposal-field="preparedByName" />
+          </label>
+          <label class="field">
+            <span>Rol</span>
+            <input type="text" value="${escapeAttr(draft.preparedByRole)}" data-proposal-field="preparedByRole" />
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input type="email" value="${escapeAttr(draft.preparedByEmail)}" data-proposal-field="preparedByEmail" />
+          </label>
+          <label class="field">
+            <span>Teléfono</span>
+            <input type="text" value="${escapeAttr(draft.preparedByPhone)}" data-proposal-field="preparedByPhone" />
+          </label>
+          <label class="field">
+            <span>WhatsApp / CTA</span>
+            <input type="text" value="${escapeAttr(draft.ctaPhone)}" data-proposal-field="ctaPhone" />
+          </label>
+        </div>
+      </article>
+
+      <article class="proposal-editor-block">
+        <h4>Resumen</h4>
+        <label class="field">
+          <span>Texto introductorio</span>
+          <textarea rows="5" data-proposal-field="introText" placeholder="Explica qué se va a hacer y para qué sirve.">${escapeHtml(draft.introText)}</textarea>
+        </label>
+      </article>
+
+      <article class="proposal-editor-block">
+        <h4>Bloques de texto</h4>
+        <div class="proposal-inline-grid proposal-inline-grid--2">
+          <label class="field">
+            <span>Servicios incluidos</span>
+            <textarea rows="6" data-proposal-lines="servicesIncluded" placeholder="Una línea por servicio">${escapeHtml((draft.servicesIncluded || []).join("\n"))}</textarea>
+          </label>
+          <label class="field">
+            <span>Cómo se verá / usos</span>
+            <textarea rows="6" data-proposal-lines="usageContexts" placeholder="Web, redes, ficha digital...">${escapeHtml((draft.usageContexts || []).join("\n"))}</textarea>
+          </label>
+          <label class="field">
+            <span>Plazos</span>
+            <textarea rows="5" data-proposal-lines="timeline" placeholder="Una línea por plazo">${escapeHtml((draft.timeline || []).join("\n"))}</textarea>
+          </label>
+          <label class="field">
+            <span>Documentación necesaria</span>
+            <textarea rows="5" data-proposal-lines="requiredDocuments" placeholder="Planos, referencias, memorias...">${escapeHtml((draft.requiredDocuments || []).join("\n"))}</textarea>
+          </label>
+          <label class="field">
+            <span>Condiciones de pago</span>
+            <textarea rows="5" data-proposal-lines="paymentTerms" placeholder="50 % al inicio...">${escapeHtml((draft.paymentTerms || []).join("\n"))}</textarea>
+          </label>
+          <label class="field">
+            <span>Qué no incluye</span>
+            <textarea rows="5" data-proposal-lines="exclusions" placeholder="Una línea por exclusión">${escapeHtml((draft.exclusions || []).join("\n"))}</textarea>
+          </label>
+        </div>
+      </article>
+
+      <article class="proposal-editor-block">
+        <div class="proposal-editor-block__head">
+          <h4>Añadir línea preconfigurada</h4>
+          <button class="primary-btn primary-btn--compact" type="button" data-proposal-action="insert-line-preset">Insertar en presupuesto</button>
+        </div>
+        <label class="field">
+          <span>Línea guardada</span>
+          <select data-proposal-field="selectedLinePresetId">
+            <option value="">Elige una línea</option>
+            ${linePresets.map((preset) => `<option value="${escapeAttr(preset.id)}">${escapeHtml(preset.title || "Linea")}</option>`).join("")}
+          </select>
+        </label>
+      </article>
+
+      ${renderProposalArrayEditor("Partidas de presupuesto", "priceItems", draft.priceItems || [], [
+        { key: "concept", label: "Concepto", placeholder: "Render exterior" },
+        { key: "quantity", label: "Cantidad", type: "number", placeholder: "1" },
+        { key: "unitPrice", label: "Precio unitario", type: "number", placeholder: "350" },
+      ])}
+
+      ${renderProposalArrayEditor("Resumen económico", "priceSummary", priceSummary, [
+        { key: "label", label: "Etiqueta", placeholder: "IVA" },
+        { key: "valueText", label: "Valor", placeholder: "294 €" },
+      ])}
+
+      ${renderProposalArrayEditor("Descuentos comerciales", "discounts", draft.discounts || [], [
+        { key: "badge", label: "Badge", placeholder: "Descuento" },
+        { key: "title", label: "TÃ­tulo", placeholder: "Tour virtual incluido" },
+        { key: "text", label: "Texto", type: "textarea", rows: 3, placeholder: "DescripciÃ³n breve" },
+        { key: "valueText", label: "Valor", placeholder: "350 EUR" },
+        { key: "discountText", label: "BonificaciÃ³n", placeholder: "-350 EUR" },
+        { key: "totalText", label: "Total", placeholder: "Incluido" },
+      ])}
+
+      ${renderProposalArrayEditor("Bonus y descuentos", "bonusItems", draft.bonusItems || [], [
+        { key: "badge", label: "Badge", placeholder: "Bonus" },
+        { key: "title", label: "Título", placeholder: "Ficha digital en TuPromoción.es" },
+        { key: "text", label: "Texto", type: "textarea", rows: 3, placeholder: "Descripción breve" },
+        { key: "valueText", label: "Valor", placeholder: "290 €" },
+        { key: "discountText", label: "Bonificación", placeholder: "-290 €" },
+        { key: "totalText", label: "Total", placeholder: "Incluido" },
+      ])}
+
+      ${renderProposalArrayEditor("Ejemplos visuales", "examples", draft.examples || [], [
+        { key: "image", label: "Imagen", placeholder: "https://..." },
+        { key: "title", label: "Título", placeholder: "Render interior" },
+        { key: "text", label: "Texto", type: "textarea", rows: 3, placeholder: "Qué está viendo el cliente" },
+      ])}
+
+      <article class="proposal-editor-block">
+        <h4>Botones y cierre</h4>
+        <div class="proposal-inline-grid proposal-inline-grid--3">
+          <label class="field">
+            <span>Email de contacto</span>
+            <input type="email" value="${escapeAttr(draft.ctaEmail)}" data-proposal-field="ctaEmail" />
+          </label>
+          <label class="field">
+            <span>Asunto aceptar</span>
+            <input type="text" value="${escapeAttr(draft.acceptSubject)}" data-proposal-field="acceptSubject" />
+          </label>
+          <label class="field">
+            <span>Mensaje llamada / WhatsApp</span>
+            <input type="text" value="${escapeAttr(draft.callText)}" data-proposal-field="callText" />
+          </label>
+          <label class="field">
+            <span>Título siguiente paso</span>
+            <input type="text" value="${escapeAttr(draft.nextStepTitle)}" data-proposal-field="nextStepTitle" />
+          </label>
+          <label class="field field--full">
+            <span>Texto siguiente paso</span>
+            <textarea rows="4" data-proposal-field="nextStepText">${escapeHtml(draft.nextStepText)}</textarea>
+          </label>
+        </div>
+      </article>
+    </div>
+  `;
+
+  bindProposalEditorEvents();
+}
+
+function createProposalRowFactory(itemType) {
+  switch (itemType) {
+    case "priceItems":
+      return { concept: "", quantity: 1, unitPrice: 0, subtotal: 0 };
+    case "priceSummary":
+      return { label: "", valueText: "", isTotal: false };
+    case "discounts":
+      return { badge: "Descuento", title: "", text: "", valueText: "", discountLabel: "Bonificación", discountText: "", totalText: "Incluido" };
+    case "bonusItems":
+      return { badge: "Bonus", title: "", text: "", valueText: "", discountLabel: "Bonificación", discountText: "", totalText: "Incluido" };
+    case "examples":
+      return { image: "", title: "", text: "" };
+    default:
+      return {};
+  }
+}
+
+function applyPreparedByPreset(presetKey) {
+  const preset = proposalPreparedByPresets[presetKey];
+  if (!preset || !proposalDraft) return;
+  proposalDraft.preparedByPreset = presetKey;
+  proposalDraft.preparedByName = preset.name;
+  proposalDraft.preparedByRole = preset.role;
+  proposalDraft.preparedByEmail = preset.email;
+  proposalDraft.preparedByPhone = preset.phone;
+  proposalDraft.ctaEmail = proposalDraft.ctaEmail || preset.email;
+  proposalDraft.ctaPhone = proposalDraft.ctaPhone || preset.phone;
+}
+
+function bindProposalEditorEvents() {
+  if (!els.proposalEditor) return;
+  const syncField = (target) => {
+    if (!proposalDraft || !(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) return;
+    const field = target.dataset.proposalField;
+    const lineField = target.dataset.proposalLines;
+    const listType = target.dataset.proposalList;
+    const index = Number(target.dataset.proposalIndex || -1);
+
+    if (lineField) {
+      proposalDraft[lineField] = splitLines(target.value || "");
+    } else if (listType && Number.isInteger(index) && index >= 0) {
+      proposalDraft[listType] ||= [];
+      const row = proposalDraft[listType][index];
+      if (!row) return;
+      row[field] = target.type === "number" ? parseProposalNumber(target.value) : target.value;
+      if (listType === "priceItems") {
+        row.quantity = parseProposalNumber(row.quantity || 0) || 1;
+        row.unitPrice = parseProposalNumber(row.unitPrice || 0);
+        row.subtotal = row.quantity * row.unitPrice;
+      }
+    } else if (field) {
+      proposalDraft[field] = target.value;
+      if (field === "slug") {
+        proposalDraft.slug = sanitizeProposalSlug(target.value);
+        target.value = proposalDraft.slug;
+      }
+      if (field === "preparedByPreset") {
+        if (target.value === "jose" || target.value === "noelia") {
+          applyPreparedByPreset(target.value);
+          renderProposalEditor();
+          return;
+        }
+      }
+      if (field === "leadId") {
+        const lead = getProposalLeadById(target.value);
+        if (lead) {
+          proposalDraft.clientName = proposalDraft.clientName || lead.name || "";
+          proposalDraft.projectType = proposalDraft.projectType || lead.projectType || "";
+          proposalDraft.introText = proposalDraft.introText || lead.notes || "";
+        }
+      }
+      if (field === "clientId") {
+        const client = getClientById(target.value);
+        if (client) {
+          proposalDraft.clientName = proposalDraft.clientName || client.name || "";
+        }
+      }
+    }
+    proposalDraft = normalizeProposalRecord(proposalDraft);
+  };
+
+  els.proposalEditor.querySelectorAll("[data-proposal-field],[data-proposal-lines],[data-proposal-list]").forEach((input) => {
+    const eventName = input instanceof HTMLSelectElement ? "change" : "input";
+    input.addEventListener(eventName, () => syncField(input));
+    if (input.dataset.proposalField === "slug") {
+      input.addEventListener("blur", () => syncField(input));
+    }
+  });
+
+  els.proposalEditor.querySelectorAll("[data-proposal-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!proposalDraft) return;
+      const action = button.dataset.proposalAction || "";
+      const itemType = button.dataset.proposalItemType || "";
+      const index = Number(button.dataset.proposalIndex || -1);
+      proposalDraft[itemType] ||= [];
+      if (action === "add-row") {
+        proposalDraft[itemType].push(createProposalRowFactory(itemType));
+      }
+      if (action === "remove-row" && index >= 0) {
+        proposalDraft[itemType].splice(index, 1);
+      }
+      if (action === "insert-line-preset") {
+        const preset = getProposalLinePresetById(proposalDraft.selectedLinePresetId || "");
+        if (preset) {
+          proposalDraft.priceItems.push({
+            concept: preset.concept || preset.title || "Línea",
+            quantity: Number(preset.quantity || 1),
+            unitPrice: Number(preset.unitPrice || 0),
+            subtotal: Number(preset.quantity || 1) * Number(preset.unitPrice || 0),
+          });
+          if (preset.serviceText) {
+            proposalDraft.servicesIncluded = [...(proposalDraft.servicesIncluded || []), preset.serviceText];
+          }
+          const presetImages = Array.isArray(preset.exampleImages) && preset.exampleImages.length
+            ? preset.exampleImages
+            : (preset.exampleImage ? [preset.exampleImage] : []);
+          if (presetImages.length) {
+            proposalDraft.examples = [
+              ...(proposalDraft.examples || []),
+              ...presetImages.map((image, imageIndex) => ({
+                image: image || "",
+                title: imageIndex === 0 ? (preset.title || preset.concept || "Ejemplo") : `${preset.title || preset.concept || "Ejemplo"} ${imageIndex + 1}`,
+                text: preset.description || preset.exampleUrl || "",
+              })),
+            ];
+          } else if (preset.exampleUrl) {
+            proposalDraft.examples = [
+              ...(proposalDraft.examples || []),
+              {
+                image: "",
+                title: preset.title || preset.concept || "Ejemplo",
+                text: preset.description || preset.exampleUrl || "",
+              },
+            ];
+          }
+        }
+      }
+      proposalDraft = normalizeProposalRecord(proposalDraft);
+      renderProposalEditor();
+    });
+  });
+}
+
+async function saveProposalRecord() {
+  if (!proposalDraft) ensureProposalDraftLoaded();
+  proposalDraft = normalizeProposalRecord(proposalDraft);
+  proposalDraft.slug = proposalDraft.slug || sanitizeProposalSlug(`${proposalDraft.projectName || proposalDraft.clientName || "propuesta"}-${proposalDraft.id.slice(-6)}`);
+  if (!proposalDraft.projectName) {
+    window.alert("Pon al menos el nombre del proyecto.");
+    return;
+  }
+  if (!proposalDraft.clientName) {
+    const client = getClientById(proposalDraft.clientId);
+    proposalDraft.clientName = client?.name || "Cliente pendiente";
+  }
+  if (!proposalDraft.ctaEmail) {
+    proposalDraft.ctaEmail = proposalDraft.preparedByEmail || "info@tucasaen3d.es";
+  }
+  if (!proposalDraft.ctaPhone) {
+    proposalDraft.ctaPhone = proposalDraft.preparedByPhone || "";
+  }
+  if (!proposalDraft.acceptSubject) {
+    proposalDraft.acceptSubject = `Aceptación de propuesta ${proposalDraft.projectName || ""}`.trim();
+  }
+  if (!proposalDraft.replySubject) {
+    proposalDraft.replySubject = `Consulta sobre propuesta ${proposalDraft.projectName || ""}`.trim();
+  }
+  if (!proposalDraft.adjustSubject) {
+    proposalDraft.adjustSubject = `Solicitud de ajustes ${proposalDraft.projectName || ""}`.trim();
+  }
+  proposalDraft.total = proposalDraft.priceItems.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+
+  const result = await apiRequest("/upsert_proposal.php", {
+    method: "POST",
+    body: { proposal: proposalDraft },
+  });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido guardar el presupuesto.");
+    return;
+  }
+  db = normalizeDatabase(result.data || {});
+  hydrateDatabase();
+  selectedProposalId = proposalDraft.id;
+  proposalDraft = normalizeProposalRecord(getProposalById(selectedProposalId) || proposalDraft);
+  renderProposalsPanel();
+  window.alert("Presupuesto guardado.");
+}
+
+async function deleteProposalRecord() {
+  const targetId = selectedProposalId || proposalDraft?.id || "";
+  if (!targetId) return;
+  const target = getProposalById(targetId) || proposalDraft;
+  if (!getProposalById(targetId)) {
+    proposalDraft = normalizeProposalRecord(createProposalDraft());
+    selectedProposalId = proposalDraft.id;
+    renderProposalsPanel();
+    return;
+  }
+  const confirmed = window.confirm(`¿Borrar el presupuesto "${target?.projectName || "sin título"}"?`);
+  if (!confirmed) return;
+  const result = await apiRequest("/delete_proposal.php", {
+    method: "POST",
+    body: { id: targetId },
+  });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido borrar el presupuesto.");
+    return;
+  }
+  db = normalizeDatabase(result.data || {});
+  hydrateDatabase();
+  selectedProposalId = "";
+  proposalDraft = null;
+  ensureProposalDraftLoaded();
+  renderProposalsPanel();
+}
+
+async function saveProposalLeadRecord() {
+  if (!proposalLeadDraft) ensureProposalLeadDraftLoaded();
+  proposalLeadDraft = normalizeProposalLeadRecord(proposalLeadDraft);
+  const result = await apiRequest("/upsert_proposal_lead.php", {
+    method: "POST",
+    body: { lead: proposalLeadDraft },
+  });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido guardar el lead.");
+    return;
+  }
+  db = normalizeDatabase(result.data || {});
+  hydrateDatabase();
+  selectedProposalLeadId = proposalLeadDraft.id;
+  proposalLeadDraft = normalizeProposalLeadRecord(getProposalLeadById(selectedProposalLeadId) || proposalLeadDraft);
+  renderProposalsPanel();
+}
+
+async function deleteProposalLeadRecord() {
+  const targetId = selectedProposalLeadId || proposalLeadDraft?.id || "";
+  if (!targetId || !getProposalLeadById(targetId)) {
+    proposalLeadDraft = normalizeProposalLeadRecord(createProposalLeadDraft());
+    selectedProposalLeadId = proposalLeadDraft.id;
+    renderProposalsPanel();
+    return;
+  }
+  const result = await apiRequest("/delete_proposal_lead.php", {
+    method: "POST",
+    body: { id: targetId },
+  });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido borrar el lead.");
+    return;
+  }
+  db = normalizeDatabase(result.data || {});
+  hydrateDatabase();
+  selectedProposalLeadId = "";
+  proposalLeadDraft = null;
+  renderProposalsPanel();
+}
+
+async function saveProposalLinePresetRecord() {
+  if (!proposalLinePresetDraft) ensureProposalLinePresetDraftLoaded();
+  proposalLinePresetDraft = normalizeProposalLinePresetRecord(proposalLinePresetDraft);
+  proposalLinePresetDraft.exampleImages = await Promise.all((proposalLinePresetDraft.exampleImages || []).map((image, index) => uploadAssetIfNeeded(proposalLinePresetDraft.id, `proposal-preset-${index + 1}`, image)));
+  proposalLinePresetDraft.exampleImage = proposalLinePresetDraft.exampleImages[0] || "";
+  const result = await apiRequest("/upsert_proposal_line_preset.php", {
+    method: "POST",
+    body: { preset: proposalLinePresetDraft },
+  });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido guardar la línea.");
+    return;
+  }
+  db = normalizeDatabase(result.data || {});
+  hydrateDatabase();
+  selectedProposalLinePresetId = proposalLinePresetDraft.id;
+  proposalLinePresetDraft = normalizeProposalLinePresetRecord(getProposalLinePresetById(selectedProposalLinePresetId) || proposalLinePresetDraft);
+  renderProposalsPanel();
+}
+
+async function deleteProposalLinePresetRecord() {
+  const targetId = selectedProposalLinePresetId || proposalLinePresetDraft?.id || "";
+  if (!targetId || !getProposalLinePresetById(targetId)) {
+    proposalLinePresetDraft = normalizeProposalLinePresetRecord(createProposalLinePresetDraft());
+    selectedProposalLinePresetId = proposalLinePresetDraft.id;
+    renderProposalsPanel();
+    return;
+  }
+  const result = await apiRequest("/delete_proposal_line_preset.php", {
+    method: "POST",
+    body: { id: targetId },
+  });
+  if (!result.ok) {
+    window.alert(result.error || "No se ha podido borrar la línea.");
+    return;
+  }
+  db = normalizeDatabase(result.data || {});
+  hydrateDatabase();
+  selectedProposalLinePresetId = "";
+  proposalLinePresetDraft = null;
+  renderProposalsPanel();
+}
+
+async function copyAbsoluteUrl(pathname) {
+  const url = getAbsoluteSiteUrl(pathname);
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      const input = document.createElement("input");
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      input.remove();
+    }
+    window.alert("Enlace copiado.");
+  } catch {
+    window.alert("No he podido copiar el enlace.");
+  }
+}
+
+function renderProposalsPanel() {
+  if (!els.proposalsHub) return;
+  ensureProposalDraftLoaded();
+  ensureProposalLeadDraftLoaded();
+  ensureProposalLinePresetDraftLoaded();
+  renderProposalLeadsManager();
+  renderProposalLinePresetsManager();
+  renderProposalList();
+  renderProposalEditor();
+  els.proposalsHub.innerHTML = proposalHubEntries.map((group) => `
+    <article class="proposal-admin-group">
+      <div class="proposal-admin-group__head">
+        <h3>${escapeHtml(group.group || "Enlaces")}</h3>
+      </div>
+      <div class="proposal-admin-grid">
+        ${(group.items || []).map((item) => `
+          <article class="proposal-admin-card">
+            <div class="proposal-admin-card__top">
+              <span class="proposal-admin-card__type">${escapeHtml(item.type || "Enlace")}</span>
+              <strong>${escapeHtml(item.title || "Sin título")}</strong>
+            </div>
+            <p>${escapeHtml(item.description || "")}</p>
+            <small>${escapeHtml(item.href || "/")}</small>
+            <div class="proposal-admin-card__actions">
+              <button class="secondary-btn secondary-btn--compact" type="button" data-open-proposal-link="${escapeAttr(item.href || "/")}">Abrir</button>
+              <button class="primary-btn primary-btn--compact" type="button" data-copy-proposal-link="${escapeAttr(item.href || "/")}">Copiar enlace</button>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </article>
+  `).join("");
+
+  els.proposalsHub.querySelectorAll("[data-open-proposal-link]").forEach((button) => {
+    button.addEventListener("click", () => {
+      window.open(getAbsoluteSiteUrl(button.dataset.openProposalLink), "_blank");
+    });
+  });
+  els.proposalsHub.querySelectorAll("[data-copy-proposal-link]").forEach((button) => {
+    button.addEventListener("click", () => { void copyAbsoluteUrl(button.dataset.copyProposalLink); });
+  });
+}
+
+function renderProposalSubview() {
+  const subview = ["builder", "saved", "leads", "presets"].includes(activeProposalSubview) ? activeProposalSubview : "builder";
+  activeProposalSubview = subview;
+  els.proposalSubviewTabs?.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.proposalSubview === subview);
+  });
+  if (els.proposalBuilderSection) els.proposalBuilderSection.hidden = subview !== "builder";
+  if (els.proposalSavedSection) els.proposalSavedSection.hidden = subview !== "saved";
+  if (els.proposalLeadsSection) els.proposalLeadsSection.hidden = subview !== "leads";
+  if (els.proposalPresetsSection) els.proposalPresetsSection.hidden = subview !== "presets";
+}
+
+function decorateProposalEditorLayout() {
+  if (!els.proposalEditor) return;
+  const draft = ensureProposalDraftLoaded();
+  const header = els.proposalEditor.querySelector(".proposal-manager__head");
+  const grid = els.proposalEditor.querySelector(".proposal-editor-grid");
+  if (!header || !grid) return;
+
+  header.classList.add("proposal-manager__head--editor");
+
+  const internalClientField = els.proposalEditor.querySelector('[data-proposal-field="clientId"]')?.closest("label");
+  if (internalClientField) {
+    internalClientField.hidden = true;
+  }
+
+  const statusMeta = getProposalStatusMeta(draft.status);
+  const computedTotal = getProposalComputedTotal(draft);
+  const visibleTotal = draft.totalText || `${formatProposalMoney(computedTotal)} + IVA`;
+  const publicPath = draft.slug ? getProposalPublicPath(draft.slug) : "";
+  const publicUrl = publicPath ? getAbsoluteSiteUrl(publicPath) : "";
+  const proposalUpdated = formatShortDate(draft.updatedAt || draft.createdAt || draft.proposalDate || "");
+
+  const shell = document.createElement("div");
+  shell.className = "proposal-editor-shell";
+  const main = document.createElement("div");
+  main.className = "proposal-editor-main";
+  const side = document.createElement("aside");
+  side.className = "proposal-editor-side";
+
+  main.append(header, grid);
+  side.innerHTML = `
+    <article class="proposal-summary-card">
+      <p class="proposal-summary-card__eyebrow">Resumen rapido</p>
+      <h4>${escapeHtml(draft.projectName || "Nuevo presupuesto")}</h4>
+      <span class="proposal-status-badge proposal-status-badge--${escapeAttr(statusMeta.tone)}">${escapeHtml(statusMeta.label)}</span>
+      <div class="proposal-summary-total">${escapeHtml(visibleTotal)}</div>
+      <div class="proposal-summary-meta">
+        <div><span>Cliente</span><strong>${escapeHtml(draft.clientName || "Pendiente")}</strong></div>
+        <div><span>Tipo</span><strong>${escapeHtml(draft.projectType || "Sin definir")}</strong></div>
+        <div><span>Fecha</span><strong>${escapeHtml(draft.proposalDate || "-")}</strong></div>
+        <div><span>Revision</span><strong>${escapeHtml(proposalUpdated || "-")}</strong></div>
+      </div>
+    </article>
+    <article class="proposal-summary-card">
+      <p class="proposal-summary-card__eyebrow">Enlace publico</p>
+      <div class="proposal-summary-link">${escapeHtml(publicUrl || "Guarda el presupuesto para generar el enlace")}</div>
+      <div class="proposal-summary-actions">
+        <button class="secondary-btn secondary-btn--compact" type="button" data-proposal-quick="open" ${publicPath ? "" : "disabled"}>Abrir enlace</button>
+        <button class="secondary-btn secondary-btn--compact" type="button" data-proposal-quick="copy" ${publicPath ? "" : "disabled"}>Copiar enlace</button>
+        <button class="primary-btn primary-btn--compact" type="button" data-proposal-quick="whatsapp" ${publicPath ? "" : "disabled"}>Enviar por WhatsApp</button>
+      </div>
+    </article>
+    <article class="proposal-summary-card">
+      <p class="proposal-summary-card__eyebrow">Como usarlo</p>
+      <ul class="proposal-summary-list">
+        <li>Lead y presupuesto separados del resto de la web.</li>
+        <li>Lineas preconfiguradas para presupuestar rapido.</li>
+        <li>Propuesta online lista para compartir por link.</li>
+      </ul>
+    </article>
+  `;
+
+  shell.append(main, side);
+  els.proposalEditor.innerHTML = "";
+  els.proposalEditor.append(shell);
+
+  side.querySelectorAll("[data-proposal-quick]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!publicPath) return;
+      const action = button.dataset.proposalQuick || "";
+      if (action === "open") {
+        window.open(getAbsoluteSiteUrl(publicPath), "_blank");
+      }
+      if (action === "copy") {
+        void copyAbsoluteUrl(publicPath);
+      }
+      if (action === "whatsapp") {
+        openProposalWhatsApp(publicPath);
+      }
+    });
+  });
+}
+
+function getProposalStatusMeta(status) {
+  switch (String(status || "").toLowerCase()) {
+    case "sent":
+      return { label: "Enviada", tone: "sent" };
+    case "accepted":
+      return { label: "Aceptada", tone: "accepted" };
+    case "expired":
+      return { label: "Caducada", tone: "expired" };
+    default:
+      return { label: "Borrador", tone: "draft" };
+  }
+}
+
+function openProposalWhatsApp(pathname) {
+  const proposalUrl = getAbsoluteSiteUrl(pathname);
+  const message = `Hola, te envio la propuesta online: ${proposalUrl}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
+}
+
+function getProposalComputedTotal(draft) {
+  return (draft?.priceItems || []).reduce((sum, item) => sum + Number(item?.subtotal || 0), 0);
+}
+
+function formatProposalMoney(amount) {
+  const value = Number(amount || 0);
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+  }).format(value);
+}
+
+function renderProposalList() {
+  if (!els.proposalsList) return;
+  const proposals = [...db.proposals].sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
+  els.proposalsList.innerHTML = `
+    <div class="proposal-manager__head">
+      <h3>Presupuestos guardados</h3>
+      <p>${proposals.length} ${proposals.length === 1 ? "presupuesto" : "presupuestos"}</p>
+    </div>
+    <div class="proposal-records">
+      ${proposals.length ? proposals.map((proposal) => {
+        const active = proposal.id === selectedProposalId || proposal.id === proposalDraft?.id;
+        const statusMeta = getProposalStatusMeta(proposal.status);
+        const proposalPath = proposal.slug ? getProposalPublicPath(proposal.slug) : "";
+        return `
+          <article class="proposal-record-card${active ? " is-active" : ""}">
+            <button class="proposal-record-card__select" type="button" data-select-proposal="${escapeAttr(proposal.id)}">
+              <div class="proposal-record-card__top">
+                <strong>${escapeHtml(proposal.projectName || "Propuesta sin titulo")}</strong>
+                <span class="proposal-status-badge proposal-status-badge--${escapeAttr(statusMeta.tone)}">${escapeHtml(statusMeta.label)}</span>
+              </div>
+              <span>${escapeHtml(proposal.clientName || "Cliente pendiente")}</span>
+              <small>${escapeHtml(proposal.projectType || "")}</small>
+              <small>Actualizado: ${escapeHtml(formatShortDate(proposal.updatedAt || proposal.createdAt || ""))}</small>
+              <small>${escapeHtml(proposal.slug || "")}</small>
+            </button>
+            <div class="proposal-record-card__actions">
+              <button class="secondary-btn secondary-btn--compact" type="button" data-open-proposal-card="${escapeAttr(proposalPath)}" ${proposalPath ? "" : "disabled"}>Abrir</button>
+              <button class="secondary-btn secondary-btn--compact" type="button" data-copy-proposal-card="${escapeAttr(proposalPath)}" ${proposalPath ? "" : "disabled"}>Copiar</button>
+              <button class="primary-btn primary-btn--compact" type="button" data-whatsapp-proposal-card="${escapeAttr(proposalPath)}" ${proposalPath ? "" : "disabled"}>WhatsApp</button>
+            </div>
+          </article>
+        `;
+      }).join("") : `<div class="dashboard-empty">Aun no hay presupuestos guardados.</div>`}
+    </div>
+  `;
+
+  els.proposalsList.querySelectorAll("[data-select-proposal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedProposalId = button.dataset.selectProposal || "";
+      proposalDraft = normalizeProposalRecord(getProposalById(selectedProposalId) || createProposalDraft());
+      activeProposalSubview = "builder";
+      renderProposalsPanel();
+    });
+  });
+  els.proposalsList.querySelectorAll("[data-open-proposal-card]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const path = button.dataset.openProposalCard || "";
+      if (!path) return;
+      window.open(getAbsoluteSiteUrl(path), "_blank");
+    });
+  });
+  els.proposalsList.querySelectorAll("[data-copy-proposal-card]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const path = button.dataset.copyProposalCard || "";
+      if (!path) return;
+      void copyAbsoluteUrl(path);
+    });
+  });
+  els.proposalsList.querySelectorAll("[data-whatsapp-proposal-card]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const path = button.dataset.whatsappProposalCard || "";
+      if (!path) return;
+      openProposalWhatsApp(path);
+    });
+  });
+}
+
+function renderProposalsPanel() {
+  if (!els.proposalsHub) return;
+  ensureProposalDraftLoaded();
+  ensureProposalLeadDraftLoaded();
+  ensureProposalLinePresetDraftLoaded();
+  renderProposalSubview();
+  renderProposalLeadsManager();
+  renderProposalLinePresetsManager();
+  renderProposalList();
+  renderProposalEditor();
+  decorateProposalEditorLayout();
+  els.proposalsHub.innerHTML = proposalHubEntries.map((group) => `
+    <article class="proposal-admin-group">
+      <div class="proposal-admin-group__head">
+        <h3>${escapeHtml(group.group || "Enlaces")}</h3>
+      </div>
+      <div class="proposal-admin-grid">
+        ${(group.items || []).map((item) => `
+          <article class="proposal-admin-card">
+            <div class="proposal-admin-card__top">
+              <span class="proposal-admin-card__type">${escapeHtml(item.type || "Enlace")}</span>
+              <strong>${escapeHtml(item.title || "Sin titulo")}</strong>
+            </div>
+            <p>${escapeHtml(item.description || "")}</p>
+            <small>${escapeHtml(item.href || "/")}</small>
+            <div class="proposal-admin-card__actions">
+              <button class="secondary-btn secondary-btn--compact" type="button" data-open-proposal-link="${escapeAttr(item.href || "/")}">Abrir</button>
+              <button class="primary-btn primary-btn--compact" type="button" data-copy-proposal-link="${escapeAttr(item.href || "/")}">Copiar enlace</button>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </article>
+  `).join("");
+
+  els.proposalsHub.querySelectorAll("[data-open-proposal-link]").forEach((button) => {
+    button.addEventListener("click", () => {
+      window.open(getAbsoluteSiteUrl(button.dataset.openProposalLink), "_blank");
+    });
+  });
+  els.proposalsHub.querySelectorAll("[data-copy-proposal-link]").forEach((button) => {
+    button.addEventListener("click", () => { void copyAbsoluteUrl(button.dataset.copyProposalLink); });
+  });
 }
 
 function isAdminUser() {
@@ -672,11 +2198,17 @@ async function logout() {
   currentView = "auth";
   stopAutosaveLoop();
   selectedUserId = "";
+  selectedProposalId = "";
+  proposalDraft = null;
+  selectedProposalLeadId = "";
+  proposalLeadDraft = null;
+  selectedProposalLinePresetId = "";
+  proposalLinePresetDraft = null;
   projectBackupsCache = [];
   userBackupsCache = [];
   if (els.loginUsername) els.loginUsername.value = "";
   if (els.loginPassword) els.loginPassword.value = "";
-  db = { clients: [], users: [], projects: [], analytics: {}, currentUser: null };
+  db = { clients: [], users: [], projects: [], proposals: [], proposalLeads: [], proposalLinePresets: [], analytics: {}, leads: [], currentUser: null, backupSettings: {} };
   if (els.loginMessage) {
     els.loginMessage.hidden = true;
     els.loginMessage.textContent = "";
@@ -705,25 +2237,57 @@ async function refreshDatabaseFromServer() {
   if (!result.ok) return false;
   db = normalizeDatabase(result.data || {});
   hydrateDatabase();
+  if (state.projectId) {
+    const freshProject = getProjectById(state.projectId);
+    if (freshProject?.state) {
+      state.publicSlug = String(freshProject.slug || freshProject.state.publicSlug || state.publicSlug || "").trim();
+      state.projectName = String(freshProject.state.projectName || freshProject.name || state.projectName || "").trim();
+    }
+  }
   rememberSavedSnapshot(state);
   return true;
 }
 
 async function renderPublicProjectFromUrl(projectId) {
   try {
-    const response = await fetch(`${API_BASE}/public_project.php?id=${encodeURIComponent(projectId)}`, { credentials: "same-origin" });
+    const lookup = PUBLIC_PROJECT_SLUG
+      ? `slug=${encodeURIComponent(PUBLIC_PROJECT_SLUG)}`
+      : `id=${encodeURIComponent(PUBLIC_PROJECT_ID || projectId || "")}`;
+    const response = await fetch(`${API_BASE}/public_project.php?${lookup}`, { credentials: "same-origin" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.ok === false || !payload.data?.project?.state) {
       document.body.innerHTML = `<main style="padding:40px;font-family:Inter,Arial,sans-serif"><h1>Promocion no encontrada</h1><p>El enlace no es valido o ya no existe.</p></main>`;
       return;
     }
-    const html = buildSiteHtml(normalizeState(payload.data.project.state), { previewMode: false, currentLanguage: PUBLIC_LANGUAGE });
+    const publicState = normalizeState(payload.data.project.state);
+    normalizePublicAssetPaths(publicState);
+    const html = buildSiteHtml(publicState, { previewMode: false, currentLanguage: PUBLIC_LANGUAGE });
     document.open();
     document.write(html);
     document.close();
   } catch {
     document.body.innerHTML = `<main style="padding:40px;font-family:Inter,Arial,sans-serif"><h1>Error al abrir la promocion</h1><p>No se ha podido cargar este enlace.</p></main>`;
   }
+}
+
+function normalizePublicAssetPath(value) {
+  if (typeof value !== "string") return value;
+  if (value.startsWith("./")) return `/${value.slice(2)}`;
+  return value;
+}
+
+function normalizePublicAssetPaths(targetState) {
+  if (!targetState || typeof targetState !== "object") return;
+  ["logo", "cover", "socialImage", "virtualTourCover", "pdfFile"].forEach((key) => {
+    targetState[key] = normalizePublicAssetPath(targetState[key]);
+  });
+  (targetState.floors || []).forEach((floor) => {
+    floor.plan = normalizePublicAssetPath(floor.plan);
+    floor.virtualTourCover = normalizePublicAssetPath(floor.virtualTourCover);
+    (floor.zones || []).forEach((zone) => {
+      zone.images = (zone.images || []).map(normalizePublicAssetPath);
+    });
+  });
 }
 
 function bindPublicFilters() {
@@ -748,6 +2312,26 @@ function inferProjectProvince(project) {
 
 function inferProjectCity(project) {
   return String(project?.state?.city || "").trim();
+}
+
+function getPublicProjectPrice(project) {
+  return String(project?.state?.priceFrom || "").trim();
+}
+
+function getPublicProjectCardLabel(project) {
+  return String(project?.state?.cardLabel || "").trim() || "Obra nueva";
+}
+
+function getPublicProjectAddress(project) {
+  return String(project?.state?.locationName || "").trim();
+}
+
+function getPublicProjectPlace(project) {
+  return [inferProjectCity(project), inferProjectProvince(project)].filter(Boolean).join(", ");
+}
+
+function getPublicProjectTypologyCount(project) {
+  return Array.isArray(project?.state?.floors) ? project.state.floors.length : 0;
 }
 
 function populatePublicProvinceFilter() {
@@ -801,26 +2385,43 @@ function renderPublicCatalog() {
   }
   els.publicProjectsGrid.innerHTML = projects.length ? projects.map((project, index) => {
     const cover = project?.state?.cover || project?.state?.logo || "";
+    const displayName = getProjectDisplayName(project);
     const province = inferProjectProvince(project);
     const city = inferProjectCity(project);
     const companyName = String(project?.clientName || project?.state?.companyName || "").trim();
-    const location = [city, province].filter(Boolean).join(", ");
+    const location = getPublicProjectPlace(project);
+    const address = getPublicProjectAddress(project);
+    const priceFrom = getPublicProjectPrice(project);
+    const cardLabel = getPublicProjectCardLabel(project);
+    const typologies = getPublicProjectTypologyCount(project);
+    const headline = String(project?.state?.headline || "Promoción inmobiliaria publicada").trim();
+    const description = String(project?.state?.introText || headline).trim();
     return `
       <article class="public-project-card">
-        <a class="public-project-card__media" href="${escapeAttr(getProjectPublicUrl(project.id))}">
+        <a class="public-project-card__media" href="${escapeAttr(getProjectPublicUrl(project))}">
           ${cover
-            ? `<img src="${escapeAttr(cover)}" alt="${escapeAttr(project.name || "Promocion")}" />`
+            ? `<img src="${escapeAttr(cover)}" alt="${escapeAttr(displayName || "Promocion")}" />`
             : `<div class="public-project-card__placeholder">${String(index + 1).padStart(2, "0")}</div>`}
+          <div class="public-project-card__topline">
+            <span class="public-project-card__tag">${escapeHtml(cardLabel)}</span>
+            ${priceFrom ? `<span class="public-project-card__price">${escapeHtml(priceFrom)}</span>` : ""}
+          </div>
           <div class="public-project-card__overlay">
             ${location ? `<span class="public-project-card__location">${escapeHtml(location)}</span>` : ""}
           </div>
         </a>
         <div class="public-project-card__body">
-          <h3>${escapeHtml(project.name || "Promocion")}</h3>
-          <p>${escapeHtml(project?.state?.headline || "Promocion inmobiliaria publicada")}</p>
+          <h3>${escapeHtml(displayName || "Promocion")}</h3>
+          <p>${escapeHtml(description)}</p>
+          <div class="public-project-card__meta">
+            ${companyName ? `<span>${escapeHtml(companyName)}</span>` : ""}
+            ${location ? `<span>${escapeHtml(location)}</span>` : ""}
+            ${address ? `<span>${escapeHtml(address)}</span>` : ""}
+            ${typologies ? `<span>${typologies} ${typologies === 1 ? "tipologia" : "tipologias"}</span>` : ""}
+          </div>
           <div class="public-project-card__footer">
-            <strong>${escapeHtml(companyName || "Tupromocion.es")}</strong>
-            <a class="primary-btn primary-btn--compact" href="${escapeAttr(getProjectPublicUrl(project.id))}">Ver promocion</a>
+            <strong>${escapeHtml(location || companyName || "Tupromocion.es")}</strong>
+            <a class="primary-btn primary-btn--compact" href="${escapeAttr(getProjectPublicUrl(project))}">Ver ficha completa</a>
           </div>
         </div>
       </article>
@@ -838,6 +2439,25 @@ async function renderPublicHome() {
 
   const result = await apiRequest("/public_projects.php");
   publicProjectsCatalog = Array.isArray(result.data?.projects) ? result.data.projects : [];
+  publicProjectsCatalog = await Promise.all(publicProjectsCatalog.map(async (project) => {
+    const hasPublicSummary = String(project?.slug || "").trim() && String(project?.state?.cardLabel || "").trim();
+    if (hasPublicSummary) return project;
+    try {
+      const response = await fetch(`${API_BASE}/public_project.php?id=${encodeURIComponent(project.id)}`, { credentials: "same-origin" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok === false || !payload.data?.project?.state) return project;
+      return {
+        ...project,
+        slug: payload.data.project.slug || project.slug || payload.data.project.state.publicSlug || "",
+        state: {
+          ...(project.state || {}),
+          ...(payload.data.project.state || {}),
+        },
+      };
+    } catch {
+      return project;
+    }
+  }));
   bindPublicFilters();
   renderPublicCatalog();
 }
@@ -847,6 +2467,9 @@ function normalizeDatabase(payload) {
     clients: Array.isArray(payload.clients) ? payload.clients : [],
     users: Array.isArray(payload.users) ? payload.users : [],
     projects: Array.isArray(payload.projects) ? payload.projects : [],
+    proposals: Array.isArray(payload.proposals) ? payload.proposals : [],
+    proposalLeads: Array.isArray(payload.proposalLeads) ? payload.proposalLeads : [],
+    proposalLinePresets: Array.isArray(payload.proposalLinePresets) ? payload.proposalLinePresets : [],
     analytics: payload.analytics && typeof payload.analytics === "object" ? payload.analytics : {},
     leads: Array.isArray(payload.leads) ? payload.leads : [],
     backupSettings: payload.backupSettings && typeof payload.backupSettings === "object" ? payload.backupSettings : {},
@@ -886,7 +2509,7 @@ function startAutosaveLoop() {
   if (autosaveIntervalId) return;
   autosaveIntervalId = window.setInterval(() => {
     void maybeAutosaveProject();
-  }, 5000);
+  }, 12000);
 }
 
 function stopAutosaveLoop() {
@@ -899,9 +2522,25 @@ async function maybeAutosaveProject() {
   if (currentView !== "editor") return;
   if (!db.currentUser?.id) return;
   if (!state.clientId) return;
+  if (autosaveInFlight || editorAssetWorkCount > 0) return;
+  if (Date.now() - lastEditorMutationAt < 4000) return;
   const snapshot = getStateSnapshotForAutosave();
   if (!snapshot || snapshot === lastServerSavedSnapshot) return;
   await saveProjectRecord("", { silent: true, autosave: true });
+}
+
+function markEditorMutated() {
+  lastEditorMutationAt = Date.now();
+}
+
+function beginEditorAssetWork() {
+  editorAssetWorkCount += 1;
+  markEditorMutated();
+}
+
+function endEditorAssetWork() {
+  editorAssetWorkCount = Math.max(0, editorAssetWorkCount - 1);
+  markEditorMutated();
 }
 
 function rememberSavedSnapshot(projectState = state) {
@@ -960,53 +2599,6 @@ async function restoreProjectVersion(versionId) {
   await loadEntityBackups("project", state.projectId);
   rememberSavedSnapshot(state);
   renderAll();
-}
-
-function collectProjectAssets(projectState = state) {
-  const items = [];
-  const push = (type, label, src) => {
-    if (!src) return;
-    items.push({ type, label, src });
-  };
-  push("image", "Logotipo", projectState.logo);
-  push("image", "Portada", projectState.cover);
-  push("image", "Imagen social", projectState.socialImage);
-  push("image", "Portada tour", projectState.virtualTourCover);
-  push("pdf", projectState.pdfName || "Dossier PDF", projectState.pdfFile);
-  projectState.floors.forEach((floor, floorIndex) => {
-    push("image", `Plano · ${floor.name || `Tipologia ${floorIndex + 1}`}`, floor.plan);
-    floor.zones.forEach((zone, zoneIndex) => {
-      zone.images.forEach((image, imageIndex) => {
-        push("image", `${floor.name || `Tipologia ${floorIndex + 1}`} · ${zone.name || `Zona ${zoneIndex + 1}`} · ${imageIndex + 1}`, image);
-      });
-    });
-  });
-  return items;
-}
-
-function renderAssetsLibrary() {
-  if (!els.assetsLibrary) return;
-  const assets = collectProjectAssets();
-  els.assetsLibrary.innerHTML = assets.length
-    ? assets.map((asset) => asset.type === "pdf"
-      ? `<article class="asset-card asset-card--file">
-          <div class="asset-card__icon">${iconPdf()}</div>
-          <div class="asset-card__meta">
-            <strong>${escapeHtml(asset.label)}</strong>
-            <span>PDF listo para descarga</span>
-          </div>
-          <a class="asset-card__link" href="${escapeAttr(asset.src)}" target="_blank" rel="noreferrer">Abrir</a>
-        </article>`
-      : `<article class="asset-card">
-          <img src="${escapeAttr(asset.src)}" alt="${escapeAttr(asset.label)}" />
-          <div class="asset-card__meta">
-            <strong>${escapeHtml(asset.label)}</strong>
-            <span>Imagen del proyecto</span>
-          </div>
-          <a class="asset-card__link" href="${escapeAttr(asset.src)}" target="_blank" rel="noreferrer">Abrir</a>
-        </article>`)
-      .join("")
-    : `<div class="dashboard-empty">Todavia no hay archivos cargados en esta promocion.</div>`;
 }
 
 function renderProjectVersions() {
@@ -1209,6 +2801,7 @@ function renderFloors() {
     addZoneBtn.addEventListener("click", () => {
       floor.zones.push({ id: safeRandomUUID(), name: "", images: [] });
       floorTranslation.zones.push({ id: floor.zones.at(-1).id, name: "" });
+      markEditorMutated();
       renderAll();
     });
     zonesWrap.appendChild(addZoneBtn);
@@ -1289,6 +2882,7 @@ function buildZoneCard(zone, floor) {
     };
     floor.zones.splice(floor.zones.indexOf(zone) + 1, 0, clone);
     floorTranslation.zones.push({ id: clone.id, name: clone.name });
+    markEditorMutated();
     renderAll();
   });
   delBtn.addEventListener("click", () => {
@@ -1421,7 +3015,9 @@ function renderStaticDropzones() {
 
 function setupDropzone({ node, multiple, accept, onFiles, preview }) {
   if (!node) return;
-  node.innerHTML = "";
+  const activeNode = node.cloneNode(false);
+  node.replaceWith(activeNode);
+  activeNode.innerHTML = "";
 
   const input = document.createElement("input");
   input.type = "file"; input.accept = accept; input.multiple = multiple;
@@ -1430,26 +3026,43 @@ function setupDropzone({ node, multiple, accept, onFiles, preview }) {
   content.className = "dropzone__content";
   content.innerHTML = preview();
 
-  node.append(content, input);
-  node.addEventListener("click", (e) => {
+  activeNode.append(content, input);
+  activeNode.addEventListener("click", (e) => {
+    if (activeNode.dataset.busy === "true") return;
     if (e.target.closest("[data-delete-thumb], [data-move-thumb], button, a, input, textarea, select")) {
       return;
     }
     input.click();
   });
   input.addEventListener("change", async (e) => {
+    if (activeNode.dataset.busy === "true") return;
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    await onFiles(files);
-    input.value = "";
+    activeNode.dataset.busy = "true";
+    beginEditorAssetWork();
+    try {
+      await onFiles(files);
+      input.value = "";
+    } finally {
+      activeNode.dataset.busy = "false";
+      endEditorAssetWork();
+    }
   });
 
-  ["dragenter", "dragover"].forEach(ev => node.addEventListener(ev, (e) => { e.preventDefault(); node.classList.add("is-active"); }));
-  ["dragleave", "drop"].forEach(ev => node.addEventListener(ev, (e) => { e.preventDefault(); node.classList.remove("is-active"); }));
-  node.addEventListener("drop", async (e) => {
+  ["dragenter", "dragover"].forEach(ev => activeNode.addEventListener(ev, (e) => { e.preventDefault(); activeNode.classList.add("is-active"); }));
+  ["dragleave", "drop"].forEach(ev => activeNode.addEventListener(ev, (e) => { e.preventDefault(); activeNode.classList.remove("is-active"); }));
+  activeNode.addEventListener("drop", async (e) => {
+    if (activeNode.dataset.busy === "true") return;
     const files = Array.from(e.dataTransfer?.files || []).filter(f => accept === "application/pdf" ? f.type === "application/pdf" : f.type.startsWith("image/"));
     if (!files.length) return;
-    await onFiles(files);
+    activeNode.dataset.busy = "true";
+    beginEditorAssetWork();
+    try {
+      await onFiles(files);
+    } finally {
+      activeNode.dataset.busy = "false";
+      endEditorAssetWork();
+    }
   });
 }
 
@@ -1695,6 +3308,21 @@ function hydrateDatabase() {
         }))
     : [];
   db.projects = Array.isArray(db.projects) ? db.projects.filter(Boolean) : [];
+  db.proposals = Array.isArray(db.proposals)
+    ? db.proposals
+        .filter((proposal) => proposal && typeof proposal === "object")
+        .map((proposal) => normalizeProposalRecord(proposal))
+    : [];
+  db.proposalLeads = Array.isArray(db.proposalLeads)
+    ? db.proposalLeads
+        .filter((lead) => lead && typeof lead === "object")
+        .map((lead) => normalizeProposalLeadRecord(lead))
+    : [];
+  db.proposalLinePresets = Array.isArray(db.proposalLinePresets)
+    ? db.proposalLinePresets
+        .filter((preset) => preset && typeof preset === "object")
+        .map((preset) => normalizeProposalLinePresetRecord(preset))
+    : [];
   db.analytics = db.analytics && typeof db.analytics === "object" ? db.analytics : {};
   db.leads = Array.isArray(db.leads) ? db.leads.filter((lead) => lead && typeof lead === "object") : [];
   db.backupSettings = db.backupSettings && typeof db.backupSettings === "object" ? db.backupSettings : {};
@@ -1831,14 +3459,18 @@ function createProject() {
   state.clientId = client?.id || "";
   if (client) assignClientToState(client.id);
   currentView = "editor";
+  markEditorMutated();
   renderAll();
 }
 
 async function saveProjectRecord(statusOverride = "", { openPublishedWindow = false, silent = false, autosave = false } = {}) {
+  if (autosaveInFlight) return false;
   normalizeStateUrlsInPlace(state);
   if (!state.projectId) state.projectId = safeRandomUUID();
   if (!state.projectName.trim()) state.projectName = state.headline.trim() || state.companyName.trim() || "Proyecto sin titulo";
+  state.publicSlug = sanitizeProjectSlug(buildProjectSlugSource(state) || state.projectId);
   if (statusOverride) state.projectStatus = statusOverride;
+  const saveStartSnapshot = getStateSnapshotForAutosave(state);
   setSaveStatus(autosave ? "Autoguardando..." : "Guardando proyecto...", "saving");
   const now = new Date().toISOString();
   const current = getProjectById(state.projectId);
@@ -1852,28 +3484,39 @@ async function saveProjectRecord(statusOverride = "", { openPublishedWindow = fa
     state: structuredClone(state),
   };
   try {
+    autosaveInFlight = true;
     const serverRecord = await prepareProjectForServerSave(record);
-    const result = await apiRequest("/upsert_project.php", { method: "POST", body: { project: serverRecord } });
+    const result = await apiRequest("/upsert_project.php", { method: "POST", body: { project: serverRecord, saveMode: autosave ? "autosave" : "manual" } });
     if (!result.ok) {
       setSaveStatus("Error al guardar", "error");
       if (!silent) window.alert(result.error || "No se ha podido guardar la promocion.");
       return false;
     }
-    await refreshDatabaseFromServer();
-    rememberSavedSnapshot(state);
-    await loadProjectVersions(state.projectId);
-    await loadEntityBackups("project", state.projectId);
+    syncSavedProjectAssetsIntoState(state, serverRecord.state);
+    lastServerSavedSnapshot = getStateSnapshotForAutosave(serverRecord.state);
+    if (!autosave) {
+      await refreshDatabaseFromServer();
+      await loadProjectVersions(state.projectId);
+      await loadEntityBackups("project", state.projectId);
+    }
     if (openPublishedWindow && record.status === "published") {
       openPublishedProjectWindow(record.state);
       currentView = "dashboard";
     }
-    renderAll();
+    if (!autosave) {
+      renderAll();
+      rememberSavedSnapshot(state);
+    } else if (getStateSnapshotForAutosave(state) === saveStartSnapshot) {
+      rememberSavedSnapshot(state);
+    }
     setSaveStatus(`${autosave ? "Autoguardado" : "Guardado"} ${formatClockTime(now)}`, "saved");
     return true;
   } catch {
     setSaveStatus("Error al guardar", "error");
     if (!silent) window.alert("No se ha podido guardar la promocion.");
     return false;
+  } finally {
+    autosaveInFlight = false;
   }
 }
 
@@ -1894,16 +3537,84 @@ function openPublishedProjectWindow(projectState) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+function sanitizeProjectSlug(value) {
+  return slugify(String(value || "").trim()).slice(0, 120);
+}
+
+function buildProjectSlugSource(projectLike) {
+  const source = projectLike?.state || projectLike || {};
+  const candidates = [
+    source.seoTitle,
+    source.projectName,
+    projectLike?.name,
+    source.headline,
+    source.companyName,
+  ].map((value) => String(value || "").trim()).filter(Boolean);
+  const projectName = candidates.find((value) => !isGenericProjectSlugName(value)) || candidates[0] || "";
+  const province = String(source.province || "").trim();
+  const city = String(source.city || "").trim();
+  return [projectName, province, city].filter(Boolean).join(" ");
+}
+
+function getProjectPublicPath(projectLike, language = "") {
+  const project = typeof projectLike === "string" ? getProjectById(projectLike) : projectLike;
+  const projectState = project?.state || projectLike || {};
+  const preferredSlug = sanitizeProjectSlug(buildProjectSlugSource(project || projectState));
+  const slug = preferredSlug || sanitizeProjectSlug(project?.slug || projectState.publicSlug);
+  if (slug) {
+    const path = `/promocion/${slug}`;
+    return language ? `${path}?lang=${encodeURIComponent(language)}` : path;
+  }
+  const fallbackId = typeof projectLike === "string" ? projectLike : (project?.id || projectState.projectId || "");
+  if (!fallbackId) return "/";
+  const query = new URLSearchParams({ promo: fallbackId });
+  if (language) query.set("lang", language);
+  return `/?${query.toString()}`;
+}
+
+function isGenericProjectSlugName(value) {
+  const slug = slugify(value);
+  return !slug
+    || slug === "nueva-promocion"
+    || slug === "promocion-sin-nombre"
+    || slug === "proyecto-sin-titulo"
+    || slug === "viviendas-de-obra-nueva-pensadas-para-vivir-mejor";
+}
+
 function getProjectPublicUrl(projectId) {
-  const url = new URL(IS_ADMIN_ROUTE ? "../" : "./", window.location.href);
-  url.search = "";
-  url.hash = "";
-  url.searchParams.set("promo", projectId);
-  return url.toString();
+  return getAbsoluteSiteUrl(getProjectPublicPath(projectId));
+}
+
+function syncSavedProjectAssetsIntoState(targetState, savedState) {
+  if (!targetState || !savedState) return;
+  ["logo", "cover", "socialImage", "virtualTourCover", "pdfFile"].forEach((key) => {
+    if (typeof savedState[key] === "string" || savedState[key] === null) {
+      targetState[key] = savedState[key];
+    }
+  });
+  if (typeof savedState.publicSlug === "string") {
+    targetState.publicSlug = savedState.publicSlug;
+  }
+  const savedFloors = Array.isArray(savedState.floors) ? savedState.floors : [];
+  targetState.floors = (Array.isArray(targetState.floors) ? targetState.floors : []).map((floor) => {
+    const savedFloor = savedFloors.find((entry) => entry?.id === floor.id);
+    if (!savedFloor) return floor;
+    const savedZones = Array.isArray(savedFloor.zones) ? savedFloor.zones : [];
+    return {
+      ...floor,
+      plan: typeof savedFloor.plan === "string" || savedFloor.plan === null ? savedFloor.plan : floor.plan,
+      virtualTourCover: typeof savedFloor.virtualTourCover === "string" || savedFloor.virtualTourCover === null ? savedFloor.virtualTourCover : floor.virtualTourCover,
+      zones: (Array.isArray(floor.zones) ? floor.zones : []).map((zone) => {
+        const savedZone = savedZones.find((entry) => entry?.id === zone.id);
+        return savedZone ? { ...zone, images: Array.isArray(savedZone.images) ? [...savedZone.images] : zone.images } : zone;
+      }),
+    };
+  });
 }
 
 async function copyProjectLink(projectId) {
-  const url = getProjectPublicUrl(projectId);
+  const project = getProjectById(projectId);
+  const url = getProjectPublicUrl(project || projectId);
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(url);
@@ -1928,6 +3639,7 @@ async function duplicateProject(projectId) {
   const duplicateState = normalizeState(project.state);
   duplicateState.projectId = safeRandomUUID();
   duplicateState.projectName = `${project.name || "Promocion"} copia`;
+  duplicateState.publicSlug = "";
   const record = {
     id: duplicateState.projectId,
     clientId: project.clientId || "",
@@ -2042,6 +3754,7 @@ function openProject(projectId) {
   state.projectStatus = project.status || "draft";
   state.clientId = project.clientId || state.clientId;
   currentView = "editor";
+  markEditorMutated();
   rememberSavedSnapshot(state);
   void Promise.all([loadProjectVersions(state.projectId), loadEntityBackups("project", state.projectId)]).then(() => renderAll());
 }
@@ -2638,7 +4351,7 @@ function renderHomeDashboardV2() {
   els.dashboardProjects.innerHTML = `
     <button class="promo-card promo-card--new" type="button" data-create-project>
       <span class="promo-card__plus">+</span>
-      <strong>Nueva promocion</strong>
+      <strong>Nueva promoción</strong>
       <span>Crear una nueva ficha</span>
     </button>
     ${projects.map((project, index) => {
@@ -2776,7 +4489,7 @@ function setSaveStatus(text, stateName = "idle") {
 
 function initEditorSections() {
   const panel = document.querySelector(".panel");
-  const ordered = ["Dashboard", "Diseno", "Idioma", "SEO", "Empresa", "Ubicacion", "Multimedia", "Tipologias", "Memoria de calidades", "Dossier PDF", "Contacto", "Redes sociales", "Acciones"];
+  const ordered = ["Dashboard", "Diseño", "Idioma", "SEO", "Empresa", "Ubicacion", "Multimedia", "Tipologias", "Memoria de calidades", "Dossier PDF", "Contacto", "Redes sociales", "Historial"];
   const sections = [...document.querySelectorAll(".editor-section")];
   const byTitle = new Map(sections.map((section) => [section.querySelector(".section-heading h2")?.textContent?.trim(), section]));
 
@@ -2959,12 +4672,14 @@ function normalizeState(c) {
   n.projectId        = String(c.projectId || "");
   n.projectName      = String(c.projectName || n.projectName);
   n.projectStatus    = c.projectStatus === "published" ? "published" : "draft";
+  n.publicSlug       = sanitizeProjectSlug(c.publicSlug || c.slug || "");
   n.clientId         = String(c.clientId || "");
   n.designVariant    = resolveDesignVariantKey(c.designVariant);
   n.companyName     = String(c.companyName    || n.companyName);
   n.headline        = String(c.headline       || n.headline);
   n.introText       = String(c.introText      || n.introText);
   n.priceFrom       = String(c.priceFrom      || "");
+  n.cardLabel       = String(c.cardLabel      || n.cardLabel);
   n.locationName    = String(c.locationName   || n.locationName);
   n.province        = String(c.province       || "");
   n.city            = String(c.city           || "");
@@ -3151,7 +4866,7 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
   const socialImage = s.socialImage || s.cover || s.logo || "";
   const languageSwitch = languages.length > 1 && s.projectId ? `
     <div class="lang-switch">
-      ${languages.map((lang) => `<a class="lang-link${lang === language ? " is-active" : ""}" href="?promo=${encodeURIComponent(s.projectId)}&lang=${encodeURIComponent(lang)}">${escapeHtml(lang.toUpperCase())}</a>`).join("")}
+      ${languages.map((lang) => `<a class="lang-link${lang === language ? " is-active" : ""}" href="${escapeAttr(getProjectPublicPath(s, lang))}">${escapeHtml(lang.toUpperCase())}</a>`).join("")}
     </div>` : "";
 
   const floors = s.floors.filter(f => f.name || f.description || f.zones.some(z => z.images.length) || f.plan);
@@ -3252,7 +4967,8 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
 
         const zonesHtml = floor.zones
           .filter(z => z.images.length)
-          .map(z => `
+          .map(z => {
+            return `
             <div class="floor-zone">
               ${((floorTranslation.zones || []).find((entry) => entry.id === z.id)?.name || z.name) ? `<div class="floor-zone__label"><span>${escapeHtml((floorTranslation.zones || []).find((entry) => entry.id === z.id)?.name || z.name || "")}</span><em>${z.images.length} ${z.images.length === 1 ? "imagen" : "imagenes"}</em></div>` : ""}
               <div class="floor-gallery${z.images.length === 1 ? " floor-gallery--single" : ""}">
@@ -3271,7 +4987,7 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
                 }).join("")}
               </div>
             </div>`
-          ).join("");
+          }).join("");
 
         const noImages = !floor.zones.some(z => z.images.length);
         const floorTourUrl = floor.virtualTourUrl || "";
@@ -3611,6 +5327,10 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
     .floor-gallery img{width:100%;height:100%;object-fit:cover;min-height:180px;cursor:zoom-in;transition:transform .2s ease;}
     .floor-gallery img:hover{transform:scale(1.02);}
     .floor-gallery__item--hero img{min-height:320px;max-height:500px;}
+    .floor-gallery__more{min-height:180px;background:linear-gradient(145deg,rgba(27,59,53,.92),rgba(18,42,36,.96));}
+    .floor-gallery__more button{width:100%;height:100%;min-height:180px;border:0;background:transparent;color:#fff;display:grid;place-items:center;align-content:center;gap:8px;cursor:pointer;font:inherit;text-align:center;}
+    .floor-gallery__more strong{font-family:'Instrument Serif',Georgia,serif;font-size:clamp(2.4rem,7vw,4rem);font-weight:400;line-height:.9;}
+    .floor-gallery__more span{font-size:.78rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:rgba(255,255,255,.74);}
     .floor-gallery--empty{grid-template-columns:1fr;padding:14px;}
     .floor-gallery__placeholder{display:grid;place-items:center;gap:10px;padding:50px 24px;border-radius:16px;background:rgba(26,22,17,.04);color:var(--muted);}
     .floor-tour-link{margin:0 14px 18px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:14px 16px;border-radius:18px;border:1px solid var(--line);background:rgba(27,59,53,.06);color:var(--ink);}
@@ -3744,6 +5464,8 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
       .media-card{grid-template-columns:1fr;justify-items:start;}
       .floor-gallery{grid-template-columns:1fr;}
       .floor-gallery__item--hero{grid-column:auto;}
+      .floor-gallery__more,
+      .floor-gallery__more button{min-height:128px;}
       .floor-body{padding:18px 18px 12px;}
       .floor-tour-link{grid-template-columns:1fr;}
       .floor-tour-link__cover{width:100%;height:180px;}
@@ -3857,7 +5579,7 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
       }
       function trackEvent(type, keepalive){
         if(isPreview || !projectId) return Promise.resolve(null);
-        return postJson('./api/track_event.php', { projectId: projectId, type: type }, keepalive)
+        return postJson('/api/track_event.php', { projectId: projectId, type: type }, keepalive)
           .catch(function(){ return null; });
       }
       if(!isPreview && projectId){
@@ -3949,7 +5671,7 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
           }
           var formData = new FormData(contactForm);
           messageNode.textContent = ${safeJsonEmbed(copy.contactFormSending)};
-          postJson('./api/submit_contact.php', {
+          postJson('/api/submit_contact.php', {
             projectId: projectId,
             name: String(formData.get('name') || ''),
             email: String(formData.get('email') || ''),

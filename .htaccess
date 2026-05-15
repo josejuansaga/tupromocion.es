@@ -1,23 +1,38 @@
 Options -Indexes
 ServerSignature Off
 
-# La home pública usa index.php (SSR de proyectos); el panel usa /admin/
+# La home publica usa index.php (SSR de proyectos); el panel usa /admin/
 DirectoryIndex index.php index.html
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Paginas comerciales estaticas
+    RewriteRule ^publica-tu-promocion/?$ /publica-tu-promocion.html [L]
+    RewriteRule ^interioristas/?$ /interioristas.html [L]
+    RewriteRule ^ficha-demo/?$ /ficha-demo.html [L]
+    RewriteRule ^propuesta/ejemplo-promotora/?$ /propuesta-ejemplo-promotora.html [L]
+    RewriteRule ^propuesta/ejemplo-interiorista/?$ /propuesta-ejemplo-interiorista.html [L]
+    RewriteRule ^propuesta/demo-promotora/?$ /propuesta-ejemplo-promotora.html [L]
+    RewriteRule ^propuesta/demo-interiorista/?$ /propuesta-ejemplo-interiorista.html [L]
+    RewriteRule ^propuesta/demo-chalet/?$ /propuesta-ejemplo-chalet.html [L]
+    RewriteRule ^propuesta/propuesta-demo-3-viviendas/?$ /propuesta-ejemplo-promotora.html [L]
+    RewriteRule ^propuesta/interiorismo-vivienda-alicante/?$ /propuesta-ejemplo-interiorista.html [L]
+    RewriteRule ^propuesta/chalet-colomer/?$ /propuesta-ejemplo-chalet.html [L]
+    RewriteRule ^propuesta/viviendas-elche/?$ /propuesta-viviendas-elche.html [L]
+    RewriteRule ^propuesta/edificio-elda/?$ /propuesta-edificio-elda.html [L]
 
     # Bloquear acceso directo a /storage/ (excepto /storage/assets/)
     RewriteCond %{REQUEST_URI} ^/storage/
     RewriteCond %{REQUEST_URI} !^/storage/assets/
     RewriteRule ^ - [F,L]
 
-    # Enrutar /promocion/{slug} → promocion/index.php?slug={slug}
+    # Enrutar /promocion/{slug} -> promocion/index.php?slug={slug}
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^promocion/([a-zA-Z0-9_-]+)/?$ promocion/index.php?slug=$1 [L,QSA]
 
-    # Enrutar /propuesta/{slug} → propuesta/index.php?slug={slug}
+    # Enrutar /propuesta/{slug} -> propuesta/index.php?slug={slug}
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^propuesta/([a-zA-Z0-9_-]+)/?$ propuesta/index.php?slug=$1 [L,QSA]
@@ -29,9 +44,25 @@ DirectoryIndex index.php index.html
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    <FilesMatch "\.(html?)$">
+        Header always unset Cache-Control
+        Header always unset Pragma
+        Header always unset Expires
+        Header always set Cache-Control "no-cache, no-store, must-revalidate"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+    </FilesMatch>
+
+    <FilesMatch "\.(css|js)$">
+        Header always unset Cache-Control
+        Header always unset Pragma
+        Header always unset Expires
+        Header always set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
 </IfModule>
 
-# PHP: aumentar límites para subida de imágenes
+# PHP: aumentar limites para subida de imagenes
 <IfModule mod_php.c>
     php_value upload_max_filesize 20M
     php_value post_max_size 22M
@@ -45,16 +76,14 @@ DirectoryIndex index.php index.html
     php_value memory_limit 128M
 </IfModule>
 
-# Comprimir recursos estáticos
+# Comprimir recursos estaticos
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
 </IfModule>
 
-# Caché para estáticos
+# Cache para estaticos
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresByType text/css "access plus 7 days"
-    ExpiresByType application/javascript "access plus 7 days"
     ExpiresByType image/jpeg "access plus 30 days"
     ExpiresByType image/png "access plus 30 days"
     ExpiresByType image/webp "access plus 30 days"

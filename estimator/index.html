@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estimator | Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico?v=20260514j" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=20260514n" />
+  </head>
+  <body data-page="dashboard">
+    <header class="est-header">
+      <a href="./" class="brand-link">
+        <img class="brand-logo" src="../img/tupromocion-logo.png?v=20260514d" alt="TuPromoción.es" />
+        <div class="brand-copy">
+          <div class="brand-title">Estimator</div>
+          <div class="brand-sub">TuPromoción.es · Tu Casa en 3D</div>
+        </div>
+      </a>
+      <nav class="est-nav">
+        <a class="est-nav__link is-active" href="./">Dashboard</a>
+        <a class="est-nav__link" href="./command-center.html">Centro de control</a>
+        <a class="est-nav__link" href="./products.html">Productos</a>
+        <a class="est-nav__link" href="./form.html">Nuevo presupuesto</a>
+        <a class="est-nav__link" href="/admin/">Volver al panel</a>
+      </nav>
+    </header>
+
+    <main class="est-main">
+      <section id="authGuard" class="empty-state" hidden></section>
+      <section id="dashboardPage" hidden>
+        <div class="stats-grid" id="dashboardStats"></div>
+        <div class="notice-strip" id="dashboardNotice"></div>
+        <div class="toolbar">
+          <div>
+            <h1>Presupuestos</h1>
+            <p>Listado principal de propuestas y presupuestos online.</p>
+          </div>
+          <div class="toolbar-actions">
+            <input id="dashboardSearch" class="filter-input" type="search" placeholder="Buscar cliente o proyecto" />
+            <select id="dashboardStatus" class="filter-input">
+              <option value="">Todos los estados</option>
+              <option value="draft">Borrador</option>
+              <option value="sent">Enviada</option>
+              <option value="accepted">Aceptada</option>
+              <option value="expired">Caducada</option>
+            </select>
+            <a class="btn btn-primary" href="./form.html">+ Nuevo presupuesto</a>
+          </div>
+        </div>
+        <section class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Proyecto</th>
+                  <th>Cliente</th>
+                  <th>Estado</th>
+                  <th>Total</th>
+                  <th>Fecha</th>
+                  <th>Enlace</th>
+                  <th class="r">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="dashboardTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./common.js?v=20260514w"></script>
+    <script src="./dashboard.js?v=20260514k"></script>
+  </body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estimator | Productos</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico?v=20260514j" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=20260514v" />
+  </head>
+  <body data-page="products">
+    <header class="est-header">
+      <a href="./" class="brand-link">
+        <img class="brand-logo" src="../img/tupromocion-logo.png?v=20260514d" alt="TuPromoción.es" />
+        <div class="brand-copy">
+          <div class="brand-title">Estimator</div>
+          <div class="brand-sub">TuPromoción.es · Tu Casa en 3D</div>
+        </div>
+      </a>
+      <nav class="est-nav">
+        <a class="est-nav__link" href="./">Dashboard</a>
+        <a class="est-nav__link" href="./command-center.html">Centro de control</a>
+        <a class="est-nav__link is-active" href="./products.html">Productos</a>
+        <a class="est-nav__link" href="./form.html">Nuevo presupuesto</a>
+        <a class="est-nav__link" href="/admin/">Volver al panel</a>
+      </nav>
+    </header>
+
+    <main class="est-main">
+      <section id="authGuard" class="empty-state" hidden></section>
+      <section id="productsPage" hidden>
+        <div class="toolbar">
+          <div>
+            <h1>Productos</h1>
+            <p>Secciones, productos, imágenes técnicas y PDFs del estimator.</p>
+          </div>
+          <div class="toolbar-actions">
+            <span id="catalogSaveState" class="save-state">Sin cambios</span>
+            <button id="addCategoryBtn" class="btn btn-ghost" type="button">Añadir sección</button>
+            <button id="saveCatalogBtn" class="btn btn-primary" type="button">Guardar catálogo</button>
+          </div>
+        </div>
+        <div id="productsCatalog"></div>
+      </section>
+    </main>
+
+    <script src="./common.js?v=20260514w"></script>
+    <script src="./products.js?v=20260514v"></script>
+  </body>
+</html>

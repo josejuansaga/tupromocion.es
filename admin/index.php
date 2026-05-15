@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-$html = file_get_contents(__DIR__ . '/../index.html');
+$html = file_get_contents(__DIR__ . '/panel.html');
 if ($html === false) {
     http_response_code(500);
     echo 'No se ha podido cargar el panel.';

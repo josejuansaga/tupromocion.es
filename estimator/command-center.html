@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estimator | Centro de control</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico?v=20260514j" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=20260514n" />
+  </head>
+  <body data-page="center">
+    <header class="est-header">
+      <a href="./" class="brand-link">
+        <img class="brand-logo" src="../img/tupromocion-logo.png?v=20260514d" alt="TuPromoción.es" />
+        <div class="brand-copy">
+          <div class="brand-title">Estimator</div>
+          <div class="brand-sub">TuPromoción.es · Tu Casa en 3D</div>
+        </div>
+      </a>
+      <nav class="est-nav">
+        <a class="est-nav__link" href="./">Dashboard</a>
+        <a class="est-nav__link is-active" href="./command-center.html">Centro de control</a>
+        <a class="est-nav__link" href="./products.html">Productos</a>
+        <a class="est-nav__link" href="./form.html">Nuevo presupuesto</a>
+        <a class="est-nav__link" href="/admin/">Volver al panel</a>
+      </nav>
+    </header>
+
+    <main class="est-main">
+      <section id="authGuard" class="empty-state" hidden></section>
+      <section id="centerPage" hidden>
+        <div class="hero-block">
+          <div>
+            <h1>Centro de mando</h1>
+            <p>Vista general para leer volumen, ritmo comercial y presupuestos por mes.</p>
+          </div>
+          <div class="toolbar-actions">
+            <select id="centerYear" class="filter-input"></select>
+            <select id="centerStatus" class="filter-input">
+              <option value="">Todos los estados</option>
+              <option value="draft">Borrador</option>
+              <option value="sent">Enviada</option>
+              <option value="accepted">Aceptada</option>
+              <option value="expired">Caducada</option>
+            </select>
+          </div>
+        </div>
+        <div class="stats-grid" id="centerStats"></div>
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Pedidos por mes</h2>
+              <span id="ordersSubtitle"></span>
+            </div>
+            <div class="panel-body">
+              <div class="bar-chart" id="ordersChart"></div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Presupuesto por mes</h2>
+              <span id="budgetSubtitle"></span>
+            </div>
+            <div class="panel-body">
+              <div class="bar-chart" id="budgetChart"></div>
+            </div>
+          </section>
+        </div>
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Clientes con más volumen</h2>
+              <span>Importe acumulado</span>
+            </div>
+            <div class="panel-body">
+              <div id="topClients"></div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Últimos movimientos</h2>
+              <span>Aceptadas y enviadas</span>
+            </div>
+            <div class="panel-body">
+              <div id="recentActivity"></div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./common.js?v=20260514w"></script>
+    <script src="./command-center.js?v=20260514k"></script>
+  </body>
+</html>

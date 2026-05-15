@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estimator | Nuevo presupuesto</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico?v=20260514j" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=20260514q" />
+  </head>
+  <body data-page="form">
+    <header class="est-header">
+      <a href="./" class="brand-link">
+        <img class="brand-logo" src="../img/tupromocion-logo.png?v=20260514d" alt="TuPromocion.es" />
+        <div class="brand-copy">
+          <div class="brand-title">Estimator</div>
+          <div class="brand-sub">TuPromocion.es · Tu Casa en 3D</div>
+        </div>
+      </a>
+      <nav class="est-nav">
+        <a class="est-nav__link" href="./">Dashboard</a>
+        <a class="est-nav__link" href="./command-center.html">Centro de control</a>
+        <a class="est-nav__link" href="./products.html">Productos</a>
+        <a class="est-nav__link is-active" href="./form.html">Nuevo presupuesto</a>
+        <a class="est-nav__link" href="/admin/">Volver al panel</a>
+      </nav>
+    </header>
+
+    <main class="est-main est-main--wide">
+      <section id="authGuard" class="empty-state" hidden></section>
+      <section id="formPage" hidden>
+        <div id="estimateNotice" class="notice-strip"></div>
+        <div class="builder-layout">
+          <section class="builder-left">
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Datos principales</h2>
+                <span id="estimateSaveState">Borrador local</span>
+              </div>
+              <div class="panel-body">
+                <div class="field-grid field-grid--3">
+                  <label class="field"><span>Cliente</span><input id="clientName" type="text" /></label>
+                  <label class="field"><span>Proyecto</span><input id="projectName" type="text" /></label>
+                  <label class="field"><span>Estado</span>
+                    <select id="status">
+                      <option value="draft">Borrador</option>
+                      <option value="sent">Enviada</option>
+                      <option value="accepted">Aceptada</option>
+                      <option value="expired">Caducada</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="field-grid field-grid--3">
+                  <label class="field"><span>Tipo de proyecto</span><input id="projectType" type="text" /></label>
+                  <label class="field"><span>Fecha</span><input id="proposalDate" type="date" /></label>
+                  <label class="field"><span>Valida hasta</span><input id="validUntil" type="date" /></label>
+                </div>
+                <div class="field-grid field-grid--3">
+                  <label class="field"><span>Validez en dias</span><input id="validDays" type="number" min="0" step="1" /></label>
+                  <label class="field"><span>Dias calculados</span><input id="validDaysInfo" type="text" disabled /></label>
+                </div>
+                <label class="field"><span>Resumen</span><textarea id="introText"></textarea></label>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Lineas del presupuesto</h2>
+                <span>Anade productos o escribe una linea manual</span>
+              </div>
+              <div class="panel-body" id="catalogBuilder"></div>
+            </div>
+
+            <div class="panel panel--soft">
+              <div class="panel-head">
+                <h2>Impuestos y descuentos</h2>
+                <span>Calculo automatico</span>
+              </div>
+              <div class="panel-body">
+                <div class="field-grid field-grid--3">
+                  <label class="field field-check"><span><input id="applyVat" type="checkbox" /> Aplicar IVA</span></label>
+                  <label class="field"><span>IVA %</span><input id="vatRate" type="number" min="0" step="0.01" /></label>
+                  <label class="field field-check"><span><input id="applyIrpf" type="checkbox" /> Aplicar IRPF</span></label>
+                </div>
+                <div class="field-grid field-grid--3">
+                  <label class="field"><span>IRPF %</span><input id="irpfRate" type="number" min="0" step="0.01" /></label>
+                  <label class="field"><span>Descuento global</span>
+                    <select id="globalDiscountType">
+                      <option value="none">Sin descuento</option>
+                      <option value="percent">Porcentaje</option>
+                      <option value="amount">Importe fijo</option>
+                    </select>
+                  </label>
+                  <label class="field"><span>Valor descuento</span><input id="globalDiscountValue" type="number" min="0" step="0.01" /></label>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="builder-right">
+            <div class="panel sticky">
+              <div class="panel-head">
+                <h2>Resumen</h2>
+                <span id="proposalPublicPath">Sin guardar</span>
+              </div>
+              <div class="panel-body" id="summaryPanel"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="./common.js?v=20260514w"></script>
+    <script src="./form.js?v=20260514s"></script>
+  </body>
+</html>

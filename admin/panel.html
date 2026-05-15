@@ -1,0 +1,809 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="./favicon.ico?v=20260514d" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png?v=20260514d" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./img/favicon-192.png?v=20260514d" />
+    <link rel="apple-touch-icon" href="./img/apple-touch-icon.png?v=20260514d" />
+    <title>Generador de promociones urbanisticas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=20260515c" />
+    <script src="./lib/jszip.min.js?v=20260514c"></script>
+    <script src="./site-variants.js?v=20260514c"></script>
+  </head>
+  <body>
+    <section id="publicWorkspace" class="public-shell" hidden>
+      <header class="public-hero">
+        <div class="public-hero__copy">
+          <p class="eyebrow">Tupromocion.es</p>
+          <h1>Promociones publicadas listas para descubrir</h1>
+          <p>Explora todos los proyectos publicados y filtra por provincia y población para encontrar cada promoción más rápido.</p>
+        </div>
+        <div class="public-hero__actions">
+          <a class="secondary-btn secondary-btn--compact" href="/admin/">Acceso admin</a>
+        </div>
+      </header>
+
+      <section class="public-filters-card">
+        <div class="public-filters-card__top">
+          <div>
+            <h2>Filtrar proyectos</h2>
+            <p>Solo se muestran las promociones publicadas.</p>
+          </div>
+          <p id="publicResultsCount" class="public-results-count">0 proyectos</p>
+        </div>
+        <div class="public-filters">
+          <label class="field">
+            <span>Provincia</span>
+            <select id="publicProvinceFilter"></select>
+          </label>
+          <label class="field">
+            <span>Población</span>
+            <select id="publicCityFilter"></select>
+          </label>
+        </div>
+      </section>
+
+      <section id="publicProjectsGrid" class="public-projects-grid"></section>
+      <button id="publicBackToTopBtn" class="floating-top-btn" type="button" hidden>Subir</button>
+    </section>
+
+    <section id="authWorkspace" class="auth-screen" hidden>
+      <div class="auth-screen__card">
+        <div class="auth-screen__copy">
+          <p class="eyebrow">Acceso privado</p>
+          <h1>Panel de promociones</h1>
+          <p>Entra con tu usuario y contraseña para gestionar clientes, promociones y publicaciones.</p>
+        </div>
+
+        <form id="loginForm" class="auth-form">
+          <label class="field">
+            <span>Usuario</span>
+            <input id="loginUsername" type="text" autocomplete="username" placeholder="Tu usuario" />
+          </label>
+          <label class="field">
+            <span>Contraseña</span>
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Tu contraseña" />
+          </label>
+          <p id="loginMessage" class="auth-form__message" hidden></p>
+          <button class="primary-btn" type="submit">Entrar</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="homeDashboard" class="home-dashboard" hidden>
+      <div class="home-dashboard__shell">
+        <header class="home-dashboard__header">
+          <div class="home-dashboard__header-row">
+            <div>
+              <p class="eyebrow">Dashboard</p>
+              <h1>Promociones creadas</h1>
+              <p>Elige cliente, crea una nueva promoción o abre una ya existente.</p>
+            </div>
+            <button id="logoutBtn" class="secondary-btn secondary-btn--compact" type="button">Salir</button>
+          </div>
+        </header>
+
+        <nav class="admin-sections-nav">
+          <button id="adminTabControl" class="admin-tab" type="button" data-admin-tab="control">Panel de control</button>
+          <button id="adminTabClients" class="admin-tab" type="button" data-admin-tab="clients">Clientes / Promotoras</button>
+          <button id="adminTabPromotions" class="admin-tab is-active" type="button" data-admin-tab="promotions">Promociones</button>
+          <button id="adminTabProposals" class="admin-tab" type="button" data-admin-tab="proposals">Presupuestos / Propuestas</button>
+          <button id="adminTabContacts" class="admin-tab" type="button" data-admin-tab="contacts">Contactos</button>
+        </nav>
+
+        <section id="dashboardStats" class="dashboard-stats admin-section" data-admin-section="control"></section>
+
+        <section id="proposalsPanel" class="home-projects-panel admin-section" data-admin-section="proposals" hidden>
+          <div class="home-projects-panel__head">
+            <div>
+              <h2>Presupuestos y propuestas online</h2>
+              <p>Área separada del resto de la web para preparar leads, líneas y presupuestos comerciales.</p>
+            </div>
+          </div>
+          <div class="proposal-subnav">
+            <button class="proposal-subnav__btn is-active" type="button" data-proposal-subview="builder">Hacer presupuestos</button>
+            <button class="proposal-subnav__btn" type="button" data-proposal-subview="saved">Presupuestos guardados</button>
+            <button class="proposal-subnav__btn" type="button" data-proposal-subview="leads">Nuevo lead</button>
+            <button class="proposal-subnav__btn" type="button" data-proposal-subview="presets">Líneas preconfiguradas</button>
+          </div>
+
+          <div id="proposalBuilderSection" class="proposal-subsection">
+            <div class="home-clients-panel__actions proposal-section-actions">
+              <button id="newProposalBtn" class="primary-btn primary-btn--compact" type="button">+ Nuevo presupuesto</button>
+              <button id="saveProposalBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar</button>
+              <button id="openProposalBtn" class="secondary-btn secondary-btn--compact" type="button">Abrir enlace</button>
+              <button id="copyProposalBtn" class="secondary-btn secondary-btn--compact" type="button">Copiar enlace</button>
+              <button id="deleteProposalBtn" class="secondary-btn secondary-btn--compact" type="button">Borrar</button>
+            </div>
+            <div class="proposal-manager">
+              <div class="proposal-builder-note">
+                <h3>Editor de presupuesto</h3>
+                <p>Esta vista es solo para crear o editar. El historial de presupuestos está en su propia pestaña para evitar ruido visual.</p>
+              </div>
+              <div id="proposalEditor" class="proposal-manager__editor"></div>
+            </div>
+          </div>
+
+          <div id="proposalSavedSection" class="proposal-subsection" hidden>
+            <div id="proposalsList" class="proposal-manager__list"></div>
+            <div class="proposal-hub-wrap">
+              <div>
+                <h3>Enlaces rápidos y demos</h3>
+                <p>Accesos directos a demos, ejemplos públicos y páginas comerciales.</p>
+              </div>
+              <div id="proposalsHub" class="proposal-hub"></div>
+            </div>
+          </div>
+
+          <div id="proposalLeadsSection" class="proposal-subsection" hidden>
+            <article class="proposal-tool-card">
+              <div class="proposal-tool-card__head">
+                <div>
+                  <h3>Leads de presupuesto</h3>
+                  <p>Guarda contactos solo para propuestas, sin mezclarlos con producción.</p>
+                </div>
+                <div class="home-clients-panel__actions">
+                  <button id="newProposalLeadBtn" class="primary-btn primary-btn--compact" type="button">+ Añadir lead</button>
+                  <button id="saveProposalLeadBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar lead</button>
+                  <button id="deleteProposalLeadBtn" class="secondary-btn secondary-btn--compact" type="button">Borrar lead</button>
+                </div>
+              </div>
+              <div class="proposal-tool-card__body">
+                <div id="proposalLeadsList" class="proposal-tool-card__list"></div>
+                <div id="proposalLeadEditor" class="proposal-tool-card__editor"></div>
+              </div>
+            </article>
+          </div>
+
+          <div id="proposalPresetsSection" class="proposal-subsection" hidden>
+            <article class="proposal-tool-card">
+              <div class="proposal-tool-card__head">
+                <div>
+                  <h3>Líneas preconfiguradas</h3>
+                  <p>Prepara trabajos tipo con precio orientativo, texto y enlace o imagen de ejemplo.</p>
+                </div>
+                <div class="home-clients-panel__actions">
+                  <button id="newProposalLinePresetBtn" class="primary-btn primary-btn--compact" type="button">+ Nueva línea</button>
+                  <button id="saveProposalLinePresetBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar línea</button>
+                  <button id="deleteProposalLinePresetBtn" class="secondary-btn secondary-btn--compact" type="button">Borrar línea</button>
+                </div>
+              </div>
+              <div class="proposal-tool-card__body">
+                <div id="proposalLinePresetsList" class="proposal-tool-card__list"></div>
+                <div id="proposalLinePresetEditor" class="proposal-tool-card__editor"></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="home-clients-panel admin-section" data-admin-section="clients" hidden>
+          <div class="home-clients-panel__head">
+            <div>
+              <h2>Clientes y promotoras</h2>
+              <p>Crea, edita y organiza las promotoras para usarlas después en las promociones.</p>
+            </div>
+            <div class="home-clients-panel__actions">
+              <button id="newClientBtn" class="primary-btn primary-btn--compact" type="button">+ Nuevo cliente</button>
+              <button id="openClientProfileBtn" class="secondary-btn secondary-btn--compact" type="button">Abrir ficha</button>
+              <button id="deleteClientBtn" class="secondary-btn secondary-btn--compact" type="button">Borrar cliente</button>
+              <button id="saveClientBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar cliente</button>
+            </div>
+          </div>
+          <div class="home-clients-panel__body">
+            <label class="field">
+              <span>Buscar empresa</span>
+              <input id="clientSearchInput" type="search" placeholder="Escribe el nombre de la promotora" />
+            </label>
+            <label class="field">
+              <span>Cliente para nueva promoción</span>
+              <select id="clientSelect"></select>
+            </label>
+            <div id="clientCardsList" class="client-cards-list"></div>
+          </div>
+        </section>
+
+        <section id="usersPanel" class="home-clients-panel admin-section" data-admin-section="clients" hidden>
+          <div class="home-clients-panel__head">
+            <div>
+              <h2>Usuarios</h2>
+              <p>Crea accesos para administradores y promotores.</p>
+            </div>
+          </div>
+          <div class="home-clients-panel__body">
+            <div class="user-form-grid">
+              <label class="field">
+                <span>Nombre</span>
+                <input id="userName" type="text" placeholder="Nombre del usuario" />
+              </label>
+              <label class="field">
+                <span>Usuario</span>
+                <input id="userUsername" type="text" placeholder="usuario" />
+              </label>
+              <label class="field">
+                <span>Contraseña</span>
+                <input id="userPassword" type="text" placeholder="contraseña" />
+              </label>
+              <label class="field">
+                <span>Rol</span>
+                <select id="userRole">
+                  <option value="promoter">Promotor</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </label>
+              <label class="field" id="userClientField">
+                <span>Cliente vinculado</span>
+                <select id="userClientId"></select>
+              </label>
+            </div>
+            <div class="home-clients-panel__actions">
+              <button id="newUserBtn" class="primary-btn primary-btn--compact" type="button">+ Nuevo usuario</button>
+              <button id="saveUserBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar usuario</button>
+              <button id="deleteUserBtn" class="secondary-btn secondary-btn--compact" type="button">Borrar usuario</button>
+              <button id="createUserBackupBtn" class="secondary-btn secondary-btn--compact" type="button">Crear copia usuario</button>
+            </div>
+            <div id="usersList" class="users-list"></div>
+            <div class="security-panel">
+              <div class="security-panel__head">
+                <div>
+                  <h3>Copias del usuario</h3>
+                  <p>Historial cronológico del usuario seleccionado.</p>
+                </div>
+              </div>
+              <div id="userBackupsList" class="security-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="backupSettingsPanel" class="home-clients-panel admin-section" data-admin-section="control" hidden>
+          <div class="home-clients-panel__head">
+            <div>
+              <h2>Seguridad y copias</h2>
+              <p>Configura cuántas copias cronológicas se guardan por proyecto y por usuario.</p>
+            </div>
+            <div class="home-clients-panel__actions">
+              <button id="saveBackupSettingsBtn" class="primary-btn primary-btn--compact" type="button">Guardar configuración</button>
+            </div>
+          </div>
+          <div class="home-clients-panel__body">
+            <div class="user-form-grid">
+              <label class="field">
+                <span>Copias por proyecto</span>
+                <input id="backupProjectsKeep" type="number" min="5" max="200" step="1" />
+              </label>
+              <label class="field">
+                <span>Copias por usuario</span>
+                <input id="backupUsersKeep" type="number" min="1" max="200" step="1" />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="home-projects-panel admin-section" data-admin-section="promotions">
+          <div class="home-projects-panel__head">
+            <div>
+              <h2>Promociones</h2>
+              <p>Todas las promociones aparecen aquí. El cliente solo filtra si lo necesitas.</p>
+            </div>
+            <div class="home-projects-filters">
+              <label class="field home-projects-filter">
+                <span>Buscar empresa</span>
+                <input id="promotionSearchInput" type="search" placeholder="Escribe el nombre de la promotora" />
+              </label>
+              <label class="field home-projects-filter">
+                <span>Filtrar por cliente</span>
+                <select id="dashboardClientFilter"></select>
+              </label>
+            </div>
+          </div>
+          <div id="dashboardProjects" class="promo-grid"></div>
+          <div class="home-project-meta" hidden>
+            <label class="field">
+              <span>Promoción abierta</span>
+              <select id="projectSelect"></select>
+            </label>
+            <label class="field">
+              <span>Titulo del proyecto</span>
+              <input id="projectName" type="text" placeholder="Ej. Colomer Villas, Fase 2, Residencial Mar..." />
+            </label>
+            <label class="field">
+              <span>Estado</span>
+              <select id="projectStatus">
+                <option value="draft">Borrador</option>
+                <option value="published">Publicado</option>
+              </select>
+            </label>
+            <button id="saveProjectRecordBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar promoción</button>
+          </div>
+        </section>
+
+        <section class="home-projects-panel admin-section" data-admin-section="contacts" hidden>
+          <div class="home-projects-panel__head">
+            <div>
+              <h2>Contactos y mensajes</h2>
+              <p>Consultas recibidas desde las promociones publicadas.</p>
+            </div>
+            <div class="home-projects-filters">
+              <label class="field home-projects-filter">
+                <span>Filtrar por promoción</span>
+                <select id="contactProjectFilter"></select>
+              </label>
+              <button id="exportContactsBtn" class="secondary-btn secondary-btn--compact" type="button">Exportar contactos</button>
+            </div>
+          </div>
+          <div id="contactsList" class="security-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="clientWorkspace" class="home-dashboard" hidden>
+      <div class="home-dashboard__shell">
+        <header class="home-dashboard__header">
+          <div>
+            <p class="eyebrow">Cliente</p>
+            <h1>Ficha de cliente</h1>
+            <p>Rellena aquí los datos de empresa, contacto y redes. Luego se usarán en las promociones.</p>
+          </div>
+        </header>
+
+        <section class="client-profile-card">
+          <div class="client-profile-card__top">
+            <div>
+              <h2>Datos de empresa</h2>
+              <p>Información base reutilizable para todas sus promociones.</p>
+            </div>
+            <div class="client-profile-card__actions">
+              <button id="backFromClientBtn" class="secondary-btn secondary-btn--compact" type="button">Volver</button>
+              <button id="saveClientProfileBtn" class="primary-btn primary-btn--compact" type="button">Guardar ficha</button>
+            </div>
+          </div>
+
+          <div class="client-profile-grid">
+            <div class="client-profile-main">
+              <label class="field">
+                <span>Nombre de la empresa</span>
+                <input id="clientProfileName" type="text" placeholder="Ej. Residencial Atlas" />
+              </label>
+              <div>
+                <p class="drop-label">Logotipo</p>
+                <div class="dropzone" data-dropzone="clientLogo"></div>
+              </div>
+            </div>
+
+            <div class="client-profile-side">
+              <label class="field">
+                <span>Ubicación</span>
+                <input id="clientProfileLocation" type="text" placeholder="Ej. Madrid" />
+              </label>
+              <label class="field">
+                <span>Web</span>
+                <input id="clientProfileWebsite" type="url" placeholder="https://empresa.com" />
+              </label>
+              <label class="field">
+                <span>Teléfono</span>
+                <input id="clientProfilePhone" type="tel" placeholder="Ej. 912 345 678" />
+              </label>
+              <label class="field">
+                <span>Email</span>
+                <input id="clientProfileEmail" type="email" placeholder="Ej. info@empresa.com" />
+              </label>
+              <label class="field">
+                <span>WhatsApp</span>
+                <input id="clientProfileWhatsapp" type="tel" placeholder="Ej. 34912345678" />
+              </label>
+            </div>
+          </div>
+
+          <div class="client-social-grid">
+            <label class="field">
+              <span>Instagram</span>
+              <input id="clientProfileInstagram" type="url" placeholder="https://instagram.com/..." />
+            </label>
+            <label class="field">
+              <span>Facebook</span>
+              <input id="clientProfileFacebook" type="url" placeholder="https://facebook.com/..." />
+            </label>
+            <label class="field">
+              <span>X / Twitter</span>
+              <input id="clientProfileTwitter" type="url" placeholder="https://x.com/..." />
+            </label>
+          </div>
+        </section>
+
+        <section class="home-projects-panel">
+          <div class="home-projects-panel__head">
+            <div>
+              <h2>Promociones de esta empresa</h2>
+              <p>Aquí tienes todas las promociones vinculadas a esta promotora.</p>
+            </div>
+            <button id="createClientProjectBtn" class="primary-btn primary-btn--compact" type="button">+ Nueva promoción</button>
+          </div>
+          <div id="clientProjectsList" class="promo-grid"></div>
+        </section>
+      </div>
+    </section>
+
+    <div id="editorWorkspace" class="shell" hidden>
+      <aside class="panel">
+        <div class="panel__intro">
+          <p class="eyebrow">Editor</p>
+          <h1>Configuración de promoción</h1>
+          <p>Edita el contenido, las imágenes y la presentación de la promoción seleccionada.</p>
+        </div>
+
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Diseño</h2>
+            <span>Version de la web</span>
+          </div>
+
+          <label class="field field--hidden">
+            <span>Plantilla visual</span>
+            <select id="designVariant">
+              <option value="mediterranea">Mediterranea</option>
+              <option value="comercial">Comercial</option>
+              <option value="urbano">Urbano</option>
+              <option value="galeria">Galeria</option>
+              <option value="catalogo">Catalogo</option>
+            </select>
+          </label>
+          <div id="designVariantPicker" class="design-picker"></div>
+        </section>
+
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Idioma</h2>
+            <span>Versiones de texto</span>
+          </div>
+
+          <div class="language-toolbar">
+            <div id="languageTabs" class="language-tabs"></div>
+            <button id="addLanguageBtn" class="secondary-btn secondary-btn--compact" type="button">Añadir idioma</button>
+          </div>
+        </section>
+
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>SEO</h2>
+            <span>Titulo, descripcion e imagen social</span>
+          </div>
+
+          <label class="field">
+            <span>Titulo SEO</span>
+            <input id="seoTitle" type="text" placeholder="Si lo dejas vacio, usara el titular" />
+          </label>
+          <label class="field">
+            <span>Descripcion SEO</span>
+            <textarea id="seoDescription" rows="4" placeholder="Texto para Google y para compartir la promocion."></textarea>
+          </label>
+          <label class="field">
+            <span>Imagen social (opcional)</span>
+            <input id="socialImage" type="url" placeholder="https://... o se usara la portada" />
+          </label>
+        </section>
+
+        <!-- Empresa -->
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Empresa</h2>
+            <span>Logo y textos principales</span>
+          </div>
+
+          <label class="field">
+            <span>Nombre de la empresa / promocion</span>
+            <input id="companyName" type="text" placeholder="Ej. Residencial Atlas" />
+          </label>
+          <label class="field">
+            <span>Titular corto</span>
+            <input id="headline" type="text" placeholder="Tu nueva promocion en el centro" />
+          </label>
+          <label class="field">
+            <span>Texto de presentacion</span>
+            <textarea id="introText" rows="4" placeholder="Explica en pocas lineas el proyecto, su ubicacion y el valor principal."></textarea>
+          </label>
+          <label class="field">
+            <span>Precio desde (opcional)</span>
+            <input id="priceFrom" type="text" placeholder="Ej. Desde 245.000 EUR" />
+          </label>
+          <label class="field">
+            <span>Etiqueta de la card (opcional)</span>
+            <input id="cardLabel" type="text" placeholder="Ej. Obra nueva, Ultimas unidades, Entrega proxima..." />
+          </label>
+
+          <div class="drop-group">
+            <div>
+              <p class="drop-label">Logotipo</p>
+              <div class="dropzone" data-dropzone="logo"></div>
+            </div>
+            <div>
+              <p class="drop-label">Imagen de portada</p>
+              <div class="dropzone" data-dropzone="cover"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Ubicacion -->
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Ubicacion</h2>
+            <span>Direccion y mapa</span>
+          </div>
+
+          <label class="field">
+            <span>Direccion exacta o zona (opcional)</span>
+            <input id="locationName" type="text" placeholder="Ej. Avenida Europa 12, Playa de San Juan" />
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Provincia (para filtros)</span>
+              <input id="province" type="text" placeholder="Ej. Alicante" />
+            </label>
+            <label class="field">
+              <span>Ciudad o municipio (para filtros)</span>
+              <input id="city" type="text" placeholder="Ej. Torrevieja" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Enlace de Google Maps</span>
+            <input id="mapsUrl" type="url" placeholder="https://www.google.com/maps/..." />
+            <span class="field-hint">Se abrira en una pestana nueva al hacer clic.</span>
+          </label>
+        </section>
+
+        <!-- Multimedia -->
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Multimedia</h2>
+            <span>Video y tour virtual</span>
+          </div>
+
+          <label class="field">
+            <span>Link de YouTube</span>
+            <input id="youtubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." />
+          </label>
+          <label class="field">
+            <span>Link del Tour Virtual</span>
+            <input id="virtualTourUrl" type="url" placeholder="https://..." />
+          </label>
+          <div>
+            <p class="drop-label">Portada del tour virtual (opcional)</p>
+            <div class="dropzone" data-dropzone="tourCover"></div>
+          </div>
+        </section>
+
+        <!-- Contacto -->
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Contacto</h2>
+            <span>Aparece en la seccion de contacto</span>
+          </div>
+
+          <label class="field">
+            <span>Telefono de contacto</span>
+            <input id="contactPhone" type="tel" placeholder="Ej. 912 345 678" />
+          </label>
+          <label class="field">
+            <span>Email de contacto</span>
+            <input id="contactEmail" type="email" placeholder="Ej. info@residencialatlas.com" />
+          </label>
+          <label class="field">
+            <span>WhatsApp (numero con prefijo, sin espacios)</span>
+            <input id="contactWhatsapp" type="tel" placeholder="Ej. 34912345678" />
+          </label>
+        </section>
+
+        <!-- Redes sociales -->
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Redes sociales</h2>
+            <span>URLs completas</span>
+          </div>
+
+          <label class="field">
+            <span>Instagram</span>
+            <input id="socialInstagram" type="url" placeholder="https://instagram.com/..." />
+          </label>
+          <label class="field">
+            <span>Facebook</span>
+            <input id="socialFacebook" type="url" placeholder="https://facebook.com/..." />
+          </label>
+          <label class="field">
+            <span>X / Twitter</span>
+            <input id="socialTwitter" type="url" placeholder="https://x.com/..." />
+          </label>
+        </section>
+
+        <!-- Memoria de calidades -->
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Memoria de calidades</h2>
+            <span>Una linea por punto</span>
+          </div>
+
+          <label class="field">
+            <span>Calidades (una por linea)</span>
+            <textarea id="qualities" rows="7" placeholder="Cocinas equipadas&#10;Suelo radiante&#10;Garaje y trastero"></textarea>
+          </label>
+        </section>
+
+        <!-- Dossier PDF -->
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Dossier PDF</h2>
+            <span>Documento descargable</span>
+          </div>
+
+          <label class="field">
+            <span>Nombre del documento (visible al usuario)</span>
+            <input id="pdfName" type="text" placeholder="Ej. Dossier Residencial Atlas" />
+          </label>
+          <div>
+            <p class="drop-label">Archivo PDF</p>
+            <div class="dropzone dropzone--pdf" data-dropzone="pdf"></div>
+          </div>
+        </section>
+
+        <!-- Tipologias -->
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Tipologias</h2>
+            <span>Datos, zonas e imagenes por vivienda</span>
+          </div>
+
+          <div id="floorsList" class="floors-list"></div>
+          <button id="addFloorBtn" class="secondary-btn" type="button">+ Anadir tipologia</button>
+        </section>
+
+        <section class="editor-section">
+          <div class="section-heading">
+            <h2>Historial</h2>
+            <span>Versiones y copias del proyecto</span>
+          </div>
+          <div class="actions">
+            <button id="createProjectBackupBtn" class="secondary-btn" type="button">Crear copia del proyecto</button>
+          </div>
+          <div id="projectVersions" class="security-list"></div>
+          <div id="projectBackups" class="security-list"></div>
+        </section>
+      </aside>
+
+      <main class="preview-area">
+        <div class="preview-topbar">
+          <div>
+            <p class="eyebrow">Vista previa</p>
+            <h2>Asi quedara la web</h2>
+            <p id="editorProjectMeta" class="editor-project-meta">Proyecto sin titulo</p>
+          </div>
+          <div class="preview-topbar__actions">
+            <span id="saveStatusPill" class="save-status-pill">Edicion abierta</span>
+            <button id="saveDraftBtn" class="secondary-btn secondary-btn--compact" type="button">Guardar</button>
+            <button id="publishProjectBtn" class="primary-btn primary-btn--compact" type="button">Enlace</button>
+            <button id="backToDashboardBtn" class="secondary-btn secondary-btn--compact" type="button">Volver al dashboard</button>
+            <p class="preview-note">Se actualiza en tiempo real mientras editas.</p>
+          </div>
+        </div>
+        <iframe id="previewFrame" title="Vista previa de la web generada"></iframe>
+      </main>
+    </div>
+
+    <template id="floorTemplate">
+      <article class="floor-card">
+        <div class="floor-card__top">
+          <h3 class="floor-card__title"></h3>
+          <div class="floor-card__top-actions">
+            <button class="soft-icon-btn floor-duplicate-btn" type="button">Duplicar</button>
+            <button class="icon-btn floor-delete-btn" type="button">Eliminar</button>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Nombre de la tipologia</span>
+          <input class="floor-name" type="text" placeholder="Ej. Piso 2 dormitorios" />
+        </label>
+        <label class="field">
+          <span>Descripcion corta</span>
+          <textarea class="floor-description" rows="3" placeholder="Ej. Vivienda luminosa con terraza y orientacion sur."></textarea>
+        </label>
+        <label class="field">
+          <span>Link del tour virtual de esta tipologia</span>
+          <input class="floor-tour-url" type="url" placeholder="https://..." />
+        </label>
+        <div class="floor-tour-cover-wrap"></div>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Superficie</span>
+            <input class="floor-area" type="text" placeholder="Ej. 95 m2" />
+          </label>
+          <label class="field">
+            <span>Dormitorios</span>
+            <input class="floor-bedrooms" type="text" placeholder="Ej. 3" />
+          </label>
+          <label class="field">
+            <span>Banos</span>
+            <input class="floor-bathrooms" type="text" placeholder="Ej. 2" />
+          </label>
+        </div>
+
+        <!-- Zones and plan injected by JS -->
+        <div class="floor-zones-wrap"></div>
+        <div class="floor-plan-wrap"></div>
+      </article>
+    </template>
+
+    <script src="./app.js?v=20260515c"></script>
+
+    <!-- Cookie consent + Google Analytics -->
+    <div id="cookie-bar" hidden>
+      <p>Usamos cookies propias y de terceros (Google Analytics) para analizar el uso de la web. Puedes aceptarlas o continuar solo con las esenciales.</p>
+      <div class="cookie-bar__actions">
+        <button id="cookie-accept" class="cookie-btn cookie-btn--primary">Aceptar todas</button>
+        <button id="cookie-reject" class="cookie-btn cookie-btn--secondary">Solo esenciales</button>
+      </div>
+    </div>
+
+    <style>
+      #cookie-bar {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+        background: #1a1a1a; color: #e8e8e8;
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        padding: .85rem 1.25rem; font-size: .82rem; line-height: 1.4;
+        box-shadow: 0 -2px 12px rgba(0,0,0,.25);
+      }
+      #cookie-bar[hidden] { display: none; }
+      #cookie-bar p { margin: 0; flex: 1; }
+      .cookie-bar__actions { display: flex; gap: .5rem; flex-shrink: 0; }
+      .cookie-btn { cursor: pointer; border: none; border-radius: 4px; padding: .45rem .9rem; font-size: .8rem; font-weight: 500; }
+      .cookie-btn--primary  { background: #fff; color: #1a1a1a; }
+      .cookie-btn--secondary{ background: transparent; color: #aaa; border: 1px solid #555; }
+      @media(max-width:600px){
+        #cookie-bar { flex-direction: column; align-items: flex-start; }
+        .cookie-bar__actions { width: 100%; }
+        .cookie-btn { flex: 1; }
+      }
+    </style>
+
+    <script>
+      (function () {
+        var GA_ID = "G-M28N9NPCG2";
+        var KEY   = "cookie_consent";
+
+        function loadGA() {
+          if (window._gaLoaded) return;
+          window._gaLoaded = true;
+          var s = document.createElement("script");
+          s.async = true;
+          s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function(){ window.dataLayer.push(arguments); };
+          gtag("js", new Date());
+          gtag("config", GA_ID, { anonymize_ip: true });
+        }
+
+        var consent = localStorage.getItem(KEY);
+        if (consent === "accepted") { loadGA(); return; }
+        if (consent === "rejected") { return; }
+
+        // No hay decision previa — mostrar banner
+        var bar = document.getElementById("cookie-bar");
+        bar.removeAttribute("hidden");
+
+        document.getElementById("cookie-accept").addEventListener("click", function () {
+          localStorage.setItem(KEY, "accepted");
+          bar.setAttribute("hidden", "");
+          loadGA();
+        });
+        document.getElementById("cookie-reject").addEventListener("click", function () {
+          localStorage.setItem(KEY, "rejected");
+          bar.setAttribute("hidden", "");
+        });
+      })();
+    </script>
+  </body>
+</html>
+

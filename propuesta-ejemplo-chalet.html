@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="./favicon.ico?v=20260514d" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png?v=20260514d" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./img/favicon-192.png?v=20260514d" />
+    <link rel="apple-touch-icon" href="./img/apple-touch-icon.png?v=20260514d" />
+    <title>Propuesta demo chalet | TuPromoción</title>
+    <meta name="description" content="Propuesta online demo para chalet o villa con imágenes interiores, exteriores y tour virtual según alcance." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=20260514c" />
+  </head>
+  <body>
+    <div id="proposal-root"></div>
+    <script id="proposal-data" type="application/json">
+      {
+        "id": "prop-demo-chalet",
+        "slug": "demo-chalet",
+        "brandLogo": "./img/tupromocion-logo.png",
+        "brandPrimary": "Tu Casa en 3D",
+        "brandSecondary": "Propuesta comercial online para chalet / villa",
+        "clientName": "Cliente chalet ejemplo",
+        "projectName": "Chalet Colomer",
+        "projectType": "Chalet / Vivienda unifamiliar",
+        "proposalDate": "2026-05-13",
+        "validUntil": "2026-06-15",
+        "status": "draft",
+        "currency": "EUR",
+        "vatNote": "+ IVA",
+        "introText": "Esta propuesta contempla la creación de imágenes interiores y exteriores para presentar una vivienda unifamiliar de forma premium, facilitar decisiones previas a obra y mejorar la percepción del proyecto ante cliente final o socios.",
+        "servicesIncluded": [
+          "Renders exteriores de fachada y piscina",
+          "Renders interiores de salón y cocina",
+          "Dormitorio principal y baño",
+          "Tour virtual incluido según alcance",
+          "Vídeo comercial opcional no incluido en esta base"
+        ],
+        "priceItems": [
+          { "concept": "Renders exteriores", "quantity": 2, "unitPrice": 260, "subtotal": 520 },
+          { "concept": "Renders interiores", "quantity": 4, "unitPrice": 190, "subtotal": 760 },
+          { "concept": "Tour virtual base", "quantity": 1, "unitPrice": 320, "subtotal": 320 }
+        ],
+        "total": 1600,
+        "discounts": [
+          {
+            "badge": "Bonus comercial",
+            "title": "Tour virtual incluido según alcance",
+            "text": "Se incluye como elemento de valor para reforzar la presentación premium del chalet.",
+            "valueText": "320 EUR",
+            "discountLabel": "Bonificación comercial",
+            "discountText": "-320 EUR",
+            "totalText": "Incluido"
+          }
+        ],
+        "examples": [
+          {
+            "image": "https://tucasaen3d.es/wp-content/uploads/2021/08/Drone-6.jpg",
+            "title": "Ejemplo de fachada exterior",
+            "text": "Visual premium para chalet con foco en arquitectura, volumen y venta emocional."
+          },
+          {
+            "image": "https://tucasaen3d.es/wp-content/uploads/2021/08/ZPiscina-F1-001.jpg",
+            "title": "Ejemplo de zona exterior",
+            "text": "Imagen orientada a mostrar terraza, piscina y estilo de vida."
+          },
+          {
+            "image": "https://tucasaen3d.es/wp-content/uploads/2022/05/SCC-006.0000.jpg",
+            "title": "Ejemplo de interior principal",
+            "text": "Render interior para reforzar acabados, atmósfera y valor percibido."
+          }
+        ],
+        "timeline": [
+          "Entrega estimada entre 10 y 18 días laborables",
+          "Primera revisión visual incluida",
+          "Ajustes finales según feedback principal del cliente"
+        ],
+        "requiredDocuments": [
+          "Planos actualizados",
+          "Distribución definitiva",
+          "Referencias de materiales y estilo",
+          "Alzados o documentación exterior si existe",
+          "Indicaciones de zonas prioritarias"
+        ],
+        "paymentTerms": [
+          "50 % al inicio",
+          "50 % antes de la entrega final",
+          "Condiciones a ajustar si se amplía alcance"
+        ],
+        "exclusions": [
+          "Cambios ilimitados",
+          "Vídeo comercial salvo que se contrate aparte",
+          "Modelado de elementos no previstos",
+          "Versiones infinitas de decoración",
+          "Trabajos no descritos en la propuesta"
+        ],
+        "ctaEmail": "info@tucasaen3d.es",
+        "ctaPhone": "+34634557033",
+        "acceptLabel": "Aceptar propuesta",
+        "acceptSubject": "Aceptación propuesta chalet Colomer",
+        "callLabel": "Solicitar llamada",
+        "callText": "Hola, quiero comentar la propuesta del chalet Colomer",
+        "replyLabel": "Responder por email",
+        "replySubject": "Consulta sobre propuesta chalet Colomer",
+        "adjustLabel": "Pedir ajustes",
+        "adjustSubject": "Solicitud de ajustes propuesta chalet Colomer",
+        "printLabel": "Imprimir / Guardar PDF",
+        "nextStepTitle": "Si el enfoque premium encaja, adaptamos el alcance exacto del chalet y definimos si hace falta vídeo o más vistas.",
+        "nextStepText": "La propuesta está pensada para mostrar con claridad qué se entrega, qué valor añadido incluye y qué no forma parte del alcance base.",
+        "secondaryCtaHref": "https://tucasaen3d.es",
+        "secondaryCtaLabel": "Ver más servicios 3D"
+      }
+    </script>
+    <script src="./proposal-template.js?v=20260514c"></script>
+  </body>
+</html>
