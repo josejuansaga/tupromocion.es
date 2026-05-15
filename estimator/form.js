@@ -39,6 +39,11 @@
     validUntil: document.querySelector("#validUntil"),
     validDays: document.querySelector("#validDays"),
     validDaysInfo: document.querySelector("#validDaysInfo"),
+    preparedByPreset: document.querySelector("#preparedByPreset"),
+    preparedByName: document.querySelector("#preparedByName"),
+    preparedByRole: document.querySelector("#preparedByRole"),
+    preparedByEmail: document.querySelector("#preparedByEmail"),
+    preparedByPhone: document.querySelector("#preparedByPhone"),
     status: document.querySelector("#status"),
     introText: document.querySelector("#introText"),
     applyVat: document.querySelector("#applyVat"),
@@ -51,6 +56,18 @@
 
   function touch(label = "Pendiente de guardar") {
     saveStateNode.textContent = label;
+  }
+
+  function applyPreparedByPreset(presetKey) {
+    proposal.preparedByPreset = presetKey || "manual";
+    const preset = Estimator.preparedByPresets?.[presetKey];
+    if (!preset) return;
+    Object.assign(proposal, preset);
+  }
+
+  function syncPreparedByContact() {
+    proposal.ctaEmail = proposal.preparedByEmail || "info@tucasaen3d.es";
+    proposal.ctaPhone = proposal.preparedByPhone || "";
   }
 
   function addDays(dateText, days) {
@@ -120,6 +137,11 @@
     fields.validUntil.value = proposal.validUntil || "";
     fields.validDays.value = Number(proposal.validDays || 30);
     fields.validDaysInfo.value = `${diffDays(proposal.proposalDate, proposal.validUntil)} dias`;
+    fields.preparedByPreset.value = proposal.preparedByPreset || "jose";
+    fields.preparedByName.value = proposal.preparedByName || "";
+    fields.preparedByRole.value = proposal.preparedByRole || "";
+    fields.preparedByEmail.value = proposal.preparedByEmail || "";
+    fields.preparedByPhone.value = proposal.preparedByPhone || "";
     fields.status.value = proposal.status || "draft";
     fields.introText.value = proposal.introText || "";
     fields.applyVat.checked = proposal.applyVat !== false;
@@ -132,9 +154,22 @@
     Object.entries(fields).forEach(([key, input]) => {
       if (!input) return;
       const handler = () => {
+        if (key === "preparedByPreset") {
+          applyPreparedByPreset(input.value);
+          syncPreparedByContact();
+          bindFields();
+          touch();
+          renderSummary();
+          return;
+        }
         if (input.type === "checkbox") proposal[key] = input.checked;
         else if (input.type === "number") proposal[key] = Number(input.value || 0);
         else proposal[key] = input.value;
+        if (key.startsWith("preparedBy") && key !== "preparedByPreset") {
+          proposal.preparedByPreset = "manual";
+          fields.preparedByPreset.value = "manual";
+          syncPreparedByContact();
+        }
         if (key === "proposalDate" || key === "validDays") {
           proposal.validUntil = addDays(proposal.proposalDate, proposal.validDays || 0);
           fields.validUntil.value = proposal.validUntil || "";
@@ -277,6 +312,7 @@
       <div class="summary-totals">
         <div class="summary-line"><span>Cliente</span><strong>${Estimator.escapeHtml(proposal.clientName || "-")}</strong></div>
         <div class="summary-line"><span>Proyecto</span><strong>${Estimator.escapeHtml(proposal.projectName || "-")}</strong></div>
+        <div class="summary-line"><span>Preparado por</span><strong>${Estimator.escapeHtml(proposal.preparedByName || "-")}</strong></div>
         <div class="summary-line"><span>Estado</span><strong>${Estimator.proposalStatusMeta(proposal.status).label}</strong></div>
       </div>
       <div class="summary-total">${Estimator.money(totals.total)}</div>
@@ -347,6 +383,7 @@
     proposal.priceItems = proposal.priceItems.map((item) => ensureLine({ ...item }));
     proposal.priceSummary = Estimator.buildPriceSummary(proposal);
     proposal.totalText = Estimator.money(Estimator.proposalTotal(proposal));
+    syncPreparedByContact();
     proposal.servicesIncluded = proposal.priceItems.map((item) => item.concept);
     proposal.examples = proposal.priceItems.flatMap((item) => {
       const images = Array.isArray(item.images) && item.images.length ? item.images : item.image ? [item.image] : [];

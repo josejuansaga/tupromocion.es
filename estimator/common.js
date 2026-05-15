@@ -1,14 +1,27 @@
 const Estimator = (() => {
   const API_BASE = "../api";
-  const preparedBy = {
-    preparedByPreset: "jose",
-    preparedByName: "Jose Juan Sanchez Garcia",
-    preparedByRole: "Tu Casa en 3D",
-    preparedByEmail: "info@tucasaen3d.es",
-    preparedByPhone: "+34 634 55 70 33",
-    ctaEmail: "info@tucasaen3d.es",
-    ctaPhone: "+34 634 55 70 33",
+  const preparedByPresets = {
+    jose: {
+      preparedByPreset: "jose",
+      preparedByName: "José Juan Sánchez García",
+      preparedByRole: "Tu Casa en 3D",
+      preparedByEmail: "info@tucasaen3d.es",
+      preparedByPhone: "+34 634 55 70 33",
+      ctaEmail: "info@tucasaen3d.es",
+      ctaPhone: "+34 634 55 70 33",
+    },
+    noelia: {
+      preparedByPreset: "noelia",
+      preparedByName: "Noelia Cocchi",
+      preparedByRole: "Tu Casa en 3D",
+      preparedByEmail: "arquitectura@tucasaen3d.es",
+      preparedByPhone: "+34 634 56 67 18",
+      ctaEmail: "arquitectura@tucasaen3d.es",
+      ctaPhone: "+34 634 56 67 18",
+    },
   };
+
+  const defaultPreparedBy = preparedByPresets.jose;
 
   function uid(prefix = "id") {
     return `${prefix}-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
@@ -239,7 +252,7 @@ const Estimator = (() => {
       totalText: "",
       createdAt: now,
       updatedAt: now,
-      ...preparedBy,
+      ...defaultPreparedBy,
     };
   }
 
@@ -267,6 +280,13 @@ const Estimator = (() => {
     ["servicesIncluded", "usageContexts", "timeline", "requiredDocuments", "paymentTerms", "exclusions"].forEach((key) => {
       base[key] = Array.isArray(base[key]) ? base[key].map(String).filter(Boolean) : [];
     });
+    base.preparedByPreset = String(base.preparedByPreset || "jose");
+    base.preparedByName = String(base.preparedByName || defaultPreparedBy.preparedByName);
+    base.preparedByRole = String(base.preparedByRole || defaultPreparedBy.preparedByRole);
+    base.preparedByEmail = String(base.preparedByEmail || defaultPreparedBy.preparedByEmail);
+    base.preparedByPhone = String(base.preparedByPhone || defaultPreparedBy.preparedByPhone);
+    base.ctaEmail = String(base.ctaEmail || base.preparedByEmail || defaultPreparedBy.ctaEmail);
+    base.ctaPhone = String(base.ctaPhone || base.preparedByPhone || defaultPreparedBy.ctaPhone);
     base.validDays = Math.max(0, Number(base.validDays || 0));
     return base;
   }
@@ -376,6 +396,7 @@ const Estimator = (() => {
     saveCatalog,
     saveProposal,
     deleteProposal,
+    preparedByPresets,
     uploadAssetIfNeeded,
     uploadAssetFile,
     defaultCatalog,

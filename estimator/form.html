@@ -61,6 +61,21 @@
                   <label class="field"><span>Validez en dias</span><input id="validDays" type="number" min="0" step="1" /></label>
                   <label class="field"><span>Dias calculados</span><input id="validDaysInfo" type="text" disabled /></label>
                 </div>
+                <div class="field-grid field-grid--3">
+                  <label class="field"><span>Quien prepara el presupuesto</span>
+                    <select id="preparedByPreset">
+                      <option value="jose">Jose Juan</option>
+                      <option value="noelia">Noelia</option>
+                      <option value="manual">Manual</option>
+                    </select>
+                  </label>
+                  <label class="field"><span>Nombre</span><input id="preparedByName" type="text" /></label>
+                  <label class="field"><span>Cargo / empresa</span><input id="preparedByRole" type="text" /></label>
+                </div>
+                <div class="field-grid field-grid--3">
+                  <label class="field"><span>Email visible</span><input id="preparedByEmail" type="email" /></label>
+                  <label class="field"><span>Telefono visible</span><input id="preparedByPhone" type="text" /></label>
+                </div>
                 <label class="field"><span>Resumen</span><textarea id="introText"></textarea></label>
               </div>
             </div>
@@ -112,7 +127,7 @@
       </section>
     </main>
 
-    <script src="./common.js?v=20260514w"></script>
-    <script src="./form.js?v=20260514s"></script>
+    <script src="./common.js?v=20260515a"></script>
+    <script src="./form.js?v=20260515a"></script>
   </body>
 </html>
