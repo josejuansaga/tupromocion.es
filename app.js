@@ -5183,6 +5183,7 @@ function buildSiteHtml(s, { usePaths = false, previewMode = false, currentLangua
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="/" />
   <title>${escapeHtml(seoTitle)}</title>
   <meta name="description" content="${escapeAttr(seoDescription)}" />
   <meta property="og:title" content="${escapeAttr(seoTitle)}" />
